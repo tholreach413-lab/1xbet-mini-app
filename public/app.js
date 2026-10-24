@@ -242,8 +242,15 @@ function loadMoreMatches() {
   renderMatches();
 }
 
-// --- FOOTBALL SEARCH NORMALIZER & ALIAS DICTIONARY ---
+// --- MULTI-SPORT & AISCORE SEARCH NORMALIZER & ALIAS DICTIONARY ---
 const FOOTBALL_ALIASES = {
+  // Global Live Feeds & Brands
+  'aiscore': 'aiscore',
+  'ai score': 'aiscore',
+  'live score': 'livescore',
+  'livescore': 'livescore',
+
+  // Football (Soccer)
   'psg': 'paris saint germain',
   'paris': 'paris',
   'barca': 'barcelona',
@@ -277,30 +284,69 @@ const FOOTBALL_ALIASES = {
   'roma': 'as roma',
   'napoli': 'napoli',
 
-  // Mobile Legends (MLBB) Aliases
+  // Basketball & NBA
+  'nba': 'nba',
+  'basketball': 'basketball',
+  'lakers': 'lakers',
+  'warriors': 'warriors',
+  'celtics': 'celtics',
+  'heat': 'miami heat',
+  'hornets': 'charlotte hornets',
+  'bulls': 'chicago bulls',
+  'bucks': 'milwaukee bucks',
+  'nets': 'brooklyn nets',
+  'knicks': 'new york knicks',
+  'suns': 'phoenix suns',
+  'clippers': 'clippers',
+  'nuggets': 'denver nuggets',
+  'mavs': 'dallas mavericks',
+
+  // Tennis
+  'tennis': 'tennis',
+  'atp': 'atp',
+  'wta': 'wta',
+  'djokovic': 'djokovic',
+  'alcaraz': 'alcaraz',
+  'sinner': 'sinner',
+  'medvedev': 'medvedev',
+  'zverev': 'zverev',
+  'nadal': 'nadal',
+  'swiatek': 'swiatek',
+  'sabalenka': 'sabalenka',
+  'gauff': 'gauff',
+
+  // Mobile Legends (MLBB) Real Tournament & Team Aliases
   'mlbb': 'mobile legends',
   'mobile legend': 'mobile legends',
   'mobile legends': 'mobile legends',
+  'gosu': 'mobile legends',
+  'gosugamers': 'mobile legends',
   'mpl': 'mpl',
+  'sys': 'see you soon',
+  'see you soon': 'see you soon',
+  'tnr': 'tnr esports',
+  'pro esports': 'pro esports',
+  'vigor apex': 'vigor apex',
+  'falcons': 'team falcons',
+  'falcons ph': 'team falcons ph',
+  'aurora': 'aurora gaming',
+  'aurora ph': 'aurora gaming ph',
+  'team flash': 'team flash',
+  'flash kh': 'team flash kh',
+  'rvz': 'team rvz',
+  'pcific': 'pcific esports',
+  'boostgate': 'boostgate esports',
+  'fut': 'fut esports',
+  'bushido': 'bushido wildcats',
+  'galaxy legends': 'galaxy legends',
+  'evil eye': 'evil eye esports',
+  'liquid': 'team liquid',
+  'liquid ph': 'team liquid ph',
   'rrq': 'rrq hoshi',
   'onic': 'fnatic onic',
-  'fnatic': 'fnatic onic',
   'bren': 'falcons ap bren',
-  'ap bren': 'falcons ap bren',
-  'liquid': 'team liquid',
-  'tlph': 'team liquid ph',
-  'aurora': 'aurora gaming',
-  'blacklist': 'blacklist international',
-  'evos': 'evos glory',
-  'bigetron': 'bigetron alpha',
-  'geek': 'geek fam',
-  'alter ego': 'alter ego',
-  'cfu': 'cfu gaming',
-  'see you soon': 'see you soon',
-  'sys': 'see you soon',
-  'flash': 'team flash',
-  'srg': 'selangor red giants',
-  'vamos': 'team vamos'
+  'vamos': 'team vamos',
+  'srg': 'selangor red giants'
 };
 
 function normalizeFootballText(str) {
@@ -316,6 +362,11 @@ function matchSearchQuery(m, rawQuery) {
   const normQ = normalizeFootballText(rawQuery);
   if (!normQ) return true;
 
+  // If user searches for platform keywords, match all genuine sports feeds
+  if (['aiscore', 'ai score', 'livescore', 'live score', 'score', 'scores'].includes(normQ)) {
+    return true;
+  }
+
   const target = normalizeFootballText([
     m.homeTeam,
     m.awayTeam,
@@ -324,7 +375,9 @@ function matchSearchQuery(m, rawQuery) {
     m.rawLeague,
     m.sport,
     m.sportName,
-    m.sportSub
+    m.sportSub,
+    'aiscore',
+    'livescore'
   ].join(' '));
 
   // Direct substring check
@@ -405,6 +458,8 @@ function renderMatches() {
     const lsFilter = STATE.liveScoreFilter || 'all';
     if (lsFilter === 'live') {
       filtered = filtered.filter(m => m.isLive);
+    } else if (lsFilter === 'finished' || lsFilter === 'results') {
+      filtered = filtered.filter(m => m.isFinished || m.time === 'FT' || m.day === 'Yesterday' || (m.homeScore !== null && m.awayScore !== null && !m.isLive));
     } else if (lsFilter === 'top') {
       filtered = filtered.filter(m => m.isTop || m.isLive);
     } else if (lsFilter === 'today') {
@@ -613,6 +668,13 @@ function generateMatchCardHTML(m) {
     ? `<img src="${m.awayLogo}" class="ls-crest" alt="${m.awayTeam}" loading="lazy" onerror="this.outerHTML='${fallbackAway}'">` 
     : getTeamAvatarFallback(m.awayTeam);
 
+  const isFinished = Boolean(m.isFinished || m.time === 'FT' || m.day === 'Yesterday');
+  const hScore = m.homeScore !== null && m.homeScore !== undefined ? m.homeScore : null;
+  const aScore = m.awayScore !== null && m.awayScore !== undefined ? m.awayScore : null;
+
+  const homeWon = isFinished && hScore !== null && aScore !== null && hScore > aScore;
+  const awayWon = isFinished && hScore !== null && aScore !== null && aScore > hScore;
+
   // LiveScore time & score pill (Exact LiveScore formatting)
   let liveScoreTimeHTML = '';
   if (m.isLive) {
@@ -621,11 +683,11 @@ function generateMatchCardHTML(m) {
         <span class="ls-live-clock"><span class="pulsing-dot-orange"></span> ${m.time}</span>
         <span class="ls-score-digits">${m.homeScore ?? 0} - ${m.awayScore ?? 0}</span>
       </div>`;
-  } else if (m.isFinished) {
+  } else if (isFinished) {
     liveScoreTimeHTML = `
       <div class="ls-score-cell finished">
         <span class="ls-match-status ft">FT</span>
-        <span class="ls-score-digits ft">${m.homeScore ?? 0} - ${m.awayScore ?? 0}</span>
+        <span class="ls-score-digits ft">${hScore ?? 0} - ${aScore ?? 0}</span>
       </div>`;
   } else {
     // Upcoming match: show real kickoff time (e.g. 02:30, 21:00) with date tag!
@@ -644,30 +706,27 @@ function generateMatchCardHTML(m) {
       </div>`;
   }
 
-  return `
-    <div class="ls-match-row ${m.isLive ? 'is-live-row' : ''}" id="card_${m.id}">
-      <!-- Live Orange Left Minute Box if live -->
-      ${m.isLive ? `<div class="ls-live-side-pill">${m.time}</div>` : ''}
-      
-      <!-- Team vs Team Center Row (Exact LiveScore Layout) -->
-      <div class="ls-match-core">
-        <div class="ls-team-box home">
-          <span class="ls-team-name">${m.homeTeam}</span>
-          ${homeLogoHTML}
-        </div>
-        ${liveScoreTimeHTML}
-        <div class="ls-team-box away">
-          ${awayLogoHTML}
-          <span class="ls-team-name">${m.awayTeam}</span>
-        </div>
-        <button class="ls-star-fav" onclick="this.classList.toggle('fav-active')" title="Favorite">
-          <svg class="star-icon-svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        </button>
-      </div>
+  // Odds Strip OR Completed Match Result Summary
+  let bottomStripHTML = '';
+  if (isFinished) {
+    let outcomeText = 'Draw';
+    if (homeWon) outcomeText = `${m.homeTeam} Won`;
+    else if (awayWon) outcomeText = `${m.awayTeam} Won`;
 
-      <!-- 1xBet Quick Betting Odds Strip -->
+    bottomStripHTML = `
+      <div class="ls-finished-summary">
+        <div class="ls-ft-badge-box">
+          <svg class="ui-icon ui-icon-xs stroke" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>FULL TIME RESULT</span>
+        </div>
+        <div class="ls-ft-outcome">${outcomeText}</div>
+        <div class="ls-ft-score-pill">${hScore ?? 0} : ${aScore ?? 0}</div>
+      </div>
+    `;
+  } else {
+    bottomStripHTML = `
       <div class="ls-odds-strip">
-        <button class="ls-odd-btn ${isSelected('1') ? 'selected' : ''}" id="odd_${m.id}_1" onclick="toggleOddSelection('${m.id}', '1', 'Home (${m.homeTeam})', ${m.odds.home})">
+        <button class="ls-odd-btn ${isSelected('1') ? 'selected' : ''}" id="odd_${m.id}_1" onclick="toggleOddSelection('${m.id}', '1', 'Home (${m.homeTeam.replace(/'/g, "\\'")})', ${m.odds.home})">
           <span class="lbl">1</span>
           <span class="val">${m.odds.home.toFixed(2)}</span>
         </button>
@@ -682,11 +741,37 @@ function generateMatchCardHTML(m) {
             <span class="val">-</span>
           </button>
         `}
-        <button class="ls-odd-btn ${isSelected('2') ? 'selected' : ''}" id="odd_${m.id}_2" onclick="toggleOddSelection('${m.id}', '2', 'Away (${m.awayTeam})', ${m.odds.away})">
+        <button class="ls-odd-btn ${isSelected('2') ? 'selected' : ''}" id="odd_${m.id}_2" onclick="toggleOddSelection('${m.id}', '2', 'Away (${m.awayTeam.replace(/'/g, "\\'")})', ${m.odds.away})">
           <span class="lbl">2</span>
           <span class="val">${m.odds.away.toFixed(2)}</span>
         </button>
       </div>
+    `;
+  }
+
+  return `
+    <div class="ls-match-row ${m.isLive ? 'is-live-row' : ''} ${isFinished ? 'is-finished-row' : ''}" id="card_${m.id}">
+      <!-- Live Orange Left Minute Box if live -->
+      ${m.isLive ? `<div class="ls-live-side-pill">${m.time}</div>` : ''}
+      
+      <!-- Team vs Team Center Row (Exact LiveScore Layout) -->
+      <div class="ls-match-core">
+        <div class="ls-team-box home">
+          <span class="ls-team-name ${homeWon ? 'winner' : (awayWon ? 'loser' : '')}">${m.homeTeam}</span>
+          ${homeLogoHTML}
+        </div>
+        ${liveScoreTimeHTML}
+        <div class="ls-team-box away">
+          ${awayLogoHTML}
+          <span class="ls-team-name ${awayWon ? 'winner' : (homeWon ? 'loser' : '')}">${m.awayTeam}</span>
+        </div>
+        <button class="ls-star-fav" onclick="this.classList.toggle('fav-active')" title="Favorite">
+          <svg class="star-icon-svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </button>
+      </div>
+
+      <!-- 1xBet Quick Betting Odds Strip OR Final Result Banner -->
+      ${bottomStripHTML}
     </div>
   `;
 }
