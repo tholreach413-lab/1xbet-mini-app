@@ -197,16 +197,19 @@
 
         <!-- Matches Container (Grouped by League) -->
         <div class="matches-grid" id="matchesContainer">
-          <!-- Dynamically Rendered by app.js -->
+          <div class="empty-state">
+            <div class="stream-spinner" style="margin: 0 auto 12px;"></div>
+            <div>Loading real-time matches from LiveScore...</div>
+          </div>
         </div>
 
-        <!-- View More (+10 Matches) Smooth Pagination -->
-        <div class="view-more-container" id="viewMoreContainer">
+        <!-- View More (+15 Matches) Smooth Pagination -->
+        <div class="view-more-container" id="viewMoreContainer" style="display: none;">
           <button class="btn-ls-view-more" id="btnViewMoreMatches" onclick="loadMoreMatches()">
             <span class="btn-more-icon">➕</span>
-            <span id="btnViewMoreText">View More (+10 Matches)</span>
+            <span id="btnViewMoreText">View More (+15 Matches)</span>
           </button>
-          <div class="ls-matches-counter-sub" id="matchesProgressText">Showing 10 of 48 matches</div>
+          <div class="ls-matches-counter-sub" id="matchesProgressText"></div>
         </div>
       </section>
 

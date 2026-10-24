@@ -186,7 +186,7 @@ function filterSport(sport) {
 function setLiveScoreFilter(filter) {
   triggerHaptic('selection');
   STATE.liveScoreFilter = filter;
-  STATE.visibleMatchCount = 10; // Reset pagination to initial 10 matches on filter switch
+  STATE.visibleMatchCount = 15; // Reset pagination to initial 15 matches on filter switch
 
   document.querySelectorAll('.ls-ribbon-btn').forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-filter') === filter);
@@ -197,7 +197,7 @@ function setLiveScoreFilter(filter) {
 
 function onMatchSearchInput(val) {
   STATE.matchSearchQuery = (val || '').trim().toLowerCase();
-  STATE.visibleMatchCount = 10;
+  STATE.visibleMatchCount = 15;
   const clearBtn = document.getElementById('btnClearSearch');
   if (clearBtn) clearBtn.style.display = STATE.matchSearchQuery ? 'inline-block' : 'none';
   renderMatches();
@@ -207,7 +207,7 @@ function clearMatchSearch() {
   const input = document.getElementById('matchLiveSearchInput');
   if (input) input.value = '';
   STATE.matchSearchQuery = '';
-  STATE.visibleMatchCount = 10;
+  STATE.visibleMatchCount = 15;
   const clearBtn = document.getElementById('btnClearSearch');
   if (clearBtn) clearBtn.style.display = 'none';
   renderMatches();
@@ -215,7 +215,7 @@ function clearMatchSearch() {
 
 function loadMoreMatches() {
   triggerHaptic('light');
-  STATE.visibleMatchCount = (STATE.visibleMatchCount || 10) + 10;
+  STATE.visibleMatchCount = (STATE.visibleMatchCount || 15) + 15;
   renderMatches();
 }
 
@@ -232,9 +232,11 @@ function getTeamAvatarFallback(name) {
 function renderMatches() {
   const container = document.getElementById('matchesContainer');
   if (!container) return;
+  const viewMoreBox = document.getElementById('viewMoreContainer');
 
   const matches = STATE.matches || [];
   if (matches.length === 0) {
+    if (viewMoreBox) viewMoreBox.style.display = 'none';
     container.innerHTML = `
       <div class="empty-state">
         <div class="stream-spinner" style="margin: 0 auto 12px;"></div>
@@ -249,34 +251,18 @@ function renderMatches() {
   const counterTxt = document.getElementById('liveCounterText');
   if (counterTxt) counterTxt.textContent = `${liveCount} LIVE NOW`;
 
-  // 1. Sport filter
-  let filtered = STATE.currentSportFilter === 'all'
-    ? matches
-    : matches.filter(m => m.sport === STATE.currentSportFilter);
-
-  // 2. LiveScore Category / Date filter
-  const lsFilter = STATE.liveScoreFilter || 'all';
-  if (lsFilter === 'live') {
-    filtered = filtered.filter(m => m.isLive);
-  } else if (lsFilter === 'top') {
-    filtered = filtered.filter(m => m.isTop || m.isLive);
-  } else if (lsFilter === 'today') {
-    filtered = filtered.filter(m => m.day === 'Today' || m.isLive);
-  } else if (lsFilter === 'tomorrow') {
-    filtered = filtered.filter(m => m.day === 'Tomorrow');
-  }
-
-  // 3. Search query filter
-  // 1. Filter logic: If searching, search across ALL 1,000+ matches globally!
+  // Filter logic: If searching, search across ALL 1,000+ matches globally!
   let filtered = [];
-  if (STATE.matchSearchQuery) {
-    const q = STATE.matchSearchQuery;
+  const searchQuery = (STATE.matchSearchQuery || '').trim().toLowerCase();
+  const isSearching = Boolean(searchQuery);
+
+  if (isSearching) {
     filtered = matches.filter(m => 
-      (m.homeTeam && m.homeTeam.toLowerCase().includes(q)) ||
-      (m.awayTeam && m.awayTeam.toLowerCase().includes(q)) ||
-      (m.league && m.league.toLowerCase().includes(q)) ||
-      (m.country && m.country.toLowerCase().includes(q)) ||
-      (m.rawLeague && m.rawLeague.toLowerCase().includes(q))
+      (m.homeTeam && m.homeTeam.toLowerCase().includes(searchQuery)) ||
+      (m.awayTeam && m.awayTeam.toLowerCase().includes(searchQuery)) ||
+      (m.league && m.league.toLowerCase().includes(searchQuery)) ||
+      (m.country && m.country.toLowerCase().includes(searchQuery)) ||
+      (m.rawLeague && m.rawLeague.toLowerCase().includes(searchQuery))
     );
   } else {
     // Sport filter
@@ -297,21 +283,20 @@ function renderMatches() {
     }
   }
 
-  // 2. Smooth Pagination:
-  // When searching: show all matches found (up to 100)
+  // Smooth Pagination:
+  // When searching: show all matches found (up to 150) so search results are never hidden
   // When browsing: show 15 matches at a time to prevent DOM lag
-  const isSearching = Boolean(STATE.matchSearchQuery);
-  const visibleLimit = isSearching ? 100 : (STATE.visibleMatchCount || 15);
+  const defaultBatch = 15;
+  const visibleLimit = isSearching ? 150 : (STATE.visibleMatchCount || defaultBatch);
   const displayList = filtered.slice(0, visibleLimit);
 
   // Update View More Container & Progress
-  const viewMoreBox = document.getElementById('viewMoreContainer');
   const btnMore = document.getElementById('btnViewMoreMatches');
   const btnMoreText = document.getElementById('btnViewMoreText');
   const progressText = document.getElementById('matchesProgressText');
 
   if (viewMoreBox) {
-    if (isSearching || filtered.length <= 15) {
+    if (isSearching || filtered.length <= defaultBatch) {
       viewMoreBox.style.display = 'none';
     } else {
       viewMoreBox.style.display = 'block';
@@ -324,13 +309,14 @@ function renderMatches() {
       } else {
         if (btnMore) btnMore.disabled = false;
         const remaining = filtered.length - displayList.length;
-        const nextBatch = Math.min(15, remaining);
-        if (btnMoreText) btnMoreText.textContent = `View More (+${nextBatch} Matches)`;
+        const nextBatch = Math.min(defaultBatch, remaining);
+        if (btnMoreText) btnMoreText.textContent = `+ View More (+${nextBatch} Matches)`;
       }
     }
   }
 
   if (displayList.length === 0) {
+    if (viewMoreBox) viewMoreBox.style.display = 'none';
     container.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">🔍</div>

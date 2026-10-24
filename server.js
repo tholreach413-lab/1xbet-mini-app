@@ -301,6 +301,13 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`🌐 Render External URL: ${process.env.RENDER_EXTERNAL_URL}`);
   }
   console.log(`====================================================`);
+
+  // Pre-cache matches on server boot
+  fetchRealLiveMatches().then(matches => {
+    console.log(`📡 Pre-cached ${matches.length} matches from LiveScore`);
+  }).catch(err => {
+    console.warn('Initial matches pre-cache notice:', err.message);
+  });
 });
 
 // Setup Telegram Bot
