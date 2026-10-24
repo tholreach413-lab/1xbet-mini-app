@@ -29,67 +29,15 @@ function triggerHaptic(type = 'light') {
   }
 }
 
-// --- SYNTHESIZED SOUND EFFECTS (Web Audio API) ---
+// --- SOUND EFFECTS (Muted as requested) ---
 class SoundManager {
   constructor() {
-    this.ctx = null;
+    this.muted = true;
   }
-  init() {
-    if (!this.ctx) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (AudioContext) this.ctx = new AudioContext();
-    }
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
-    }
-  }
-  playClick() {
-    this.init();
-    if (!this.ctx) return;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(800, this.ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(400, this.ctx.currentTime + 0.05);
-    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start();
-    osc.stop(this.ctx.currentTime + 0.05);
-  }
-  playWin() {
-    this.init();
-    if (!this.ctx) return;
-    const now = this.ctx.currentTime;
-    [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, now + idx * 0.08);
-      gain.gain.setValueAtTime(0.2, now + idx * 0.08);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.08 + 0.25);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(now + idx * 0.08);
-      osc.stop(now + idx * 0.08 + 0.25);
-    });
-  }
-  playCrash() {
-    this.init();
-    if (!this.ctx) return;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(150, this.ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.3);
-    gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.35);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start();
-    osc.stop(this.ctx.currentTime + 0.35);
-  }
+  init() {}
+  playClick() {}
+  playWin() {}
+  playCrash() {}
 }
 const sounds = new SoundManager();
 
@@ -167,16 +115,6 @@ async function loadLiveMatches() {
       renderMatches();
       renderLiveMatches();
       renderStreamChannelSelector();
-
-      // If no stream match is active yet, auto-select the first match and auto-find its live video
-      if (!currentStreamMatchId || !STATE.matches.some(m => m.id === currentStreamMatchId)) {
-        if (STATE.matches[0]) {
-          switchStreamMatch(STATE.matches[0].id, false);
-        }
-      } else {
-        const cur = STATE.matches.find(m => m.id === currentStreamMatchId);
-        if (cur) renderStreamOdds(cur);
-      }
     }
   } catch (err) {
     console.error("Error loading live matches from /api/matches:", err);
@@ -1579,11 +1517,11 @@ async function autoFindLiveStream(query) {
       }, 1200);
       showToast(`📺 Auto-found Live Stream for ${query}!`);
     } else {
-      if (iframe) iframe.src = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query + ' live')}&autoplay=1`;
+      if (iframe) iframe.src = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query + ' live')}&mute=1`;
       if (overlay) overlay.classList.remove('active');
     }
   } catch (e) {
-    if (iframe) iframe.src = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query + ' live')}&autoplay=1`;
+    if (iframe) iframe.src = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query + ' live')}&mute=1`;
     if (overlay) overlay.classList.remove('active');
   }
 }
