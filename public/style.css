@@ -435,12 +435,35 @@ body {
   display: flex;
   gap: 8px;
   padding: 10px 14px;
-  overflow-x: auto;
-  scrollbar-width: none;
+  overflow-x: auto !important;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  cursor: grab;
+  user-select: none;
+}
+
+.category-tabs:active,
+.category-tabs.is-dragging {
+  cursor: grabbing !important;
 }
 
 .category-tabs::-webkit-scrollbar {
-  display: none;
+  height: 4px;
+}
+
+.category-tabs::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+}
+
+.category-tabs::-webkit-scrollbar-thumb {
+  background: rgba(0, 210, 255, 0.3);
+  border-radius: 4px;
+}
+
+.category-tabs::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 210, 255, 0.6);
 }
 
 .cat-tab {
@@ -457,6 +480,7 @@ body {
   white-space: nowrap;
   cursor: pointer;
   transition: var(--transition);
+  flex-shrink: 0;
 }
 
 .cat-tab.active {
@@ -492,12 +516,35 @@ body {
   display: flex;
   gap: 8px;
   padding: 4px 14px 12px;
-  overflow-x: auto;
-  scrollbar-width: none;
+  overflow-x: auto !important;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  cursor: grab;
+  user-select: none;
+}
+
+.sub-filter-row:active,
+.sub-filter-row.is-dragging {
+  cursor: grabbing !important;
 }
 
 .sub-filter-row::-webkit-scrollbar {
-  display: none;
+  height: 4px;
+}
+
+.sub-filter-row::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+}
+
+.sub-filter-row::-webkit-scrollbar-thumb {
+  background: rgba(0, 210, 255, 0.3);
+  border-radius: 4px;
+}
+
+.sub-filter-row::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 210, 255, 0.6);
 }
 
 .filter-chip {
@@ -682,13 +729,32 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding: 2px 0;
+  overflow-x: auto !important;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  cursor: grab;
+  user-select: none;
+  padding: 4px 0 8px;
+}
+
+.ls-date-ribbon:active,
+.ls-date-ribbon.is-dragging {
+  cursor: grabbing !important;
 }
 
 .ls-date-ribbon::-webkit-scrollbar {
-  display: none;
+  height: 4px;
+}
+
+.ls-date-ribbon::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+}
+
+.ls-date-ribbon::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
 }
 
 .ls-ribbon-btn {

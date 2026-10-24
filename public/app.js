@@ -134,6 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCrashEngine();
   startLiveOddsSimulation();
   initBakongDragListeners();
+  initHorizontalScrollBars();
 });
 
 // Update Balance UI everywhere
@@ -147,14 +148,18 @@ function updateUserBalanceDisplay() {
   if (d3) d3.textContent = formatted;
 }
 
-// --- TAB SWITCHING ---
+// --- TAB SWITCHING (With auto smooth scroll into view) ---
 function switchTab(tabId) {
   triggerHaptic('selection');
   STATE.currentTab = tabId;
 
-  // Update top nav
+  // Update top nav & scroll active tab into view
   document.querySelectorAll('.cat-tab').forEach(b => {
-    b.classList.toggle('active', b.getAttribute('data-tab') === tabId);
+    const isActive = b.getAttribute('data-tab') === tabId;
+    b.classList.toggle('active', isActive);
+    if (isActive) {
+      b.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
   });
   // Update bottom nav
   document.querySelectorAll('.nav-item').forEach(b => {
@@ -173,13 +178,26 @@ function switchTab(tabId) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// --- SPORT FILTERING ---
+// --- SPORT FILTERING (With auto smooth scroll into view) ---
 function filterSport(sport) {
   triggerHaptic('light');
   STATE.currentSportFilter = sport;
   document.querySelectorAll('.filter-chip').forEach(c => {
-    c.classList.toggle('active', c.getAttribute('data-sport') === sport);
+    const isActive = c.getAttribute('data-sport') === sport;
+    c.classList.toggle('active', isActive);
+    if (isActive) {
+      c.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
   });
+
+  // When clicking Mobile Legends, show all MLBB matches across all leagues
+  if (sport === 'mlbb') {
+    STATE.liveScoreFilter = 'all';
+    document.querySelectorAll('.ls-ribbon-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-filter') === 'all');
+    });
+  }
+
   renderMatches();
 }
 
@@ -190,7 +208,11 @@ function setLiveScoreFilter(filter) {
   STATE.visibleMatchCount = 15; // Reset pagination to initial 15 matches on filter switch
 
   document.querySelectorAll('.ls-ribbon-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.getAttribute('data-filter') === filter);
+    const isActive = btn.getAttribute('data-filter') === filter;
+    btn.classList.toggle('active', isActive);
+    if (isActive) {
+      btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
   });
 
   renderMatches();
@@ -253,7 +275,32 @@ const FOOTBALL_ALIASES = {
   'atletico': 'atletico madrid',
   'wolves': 'wolverhampton',
   'roma': 'as roma',
-  'napoli': 'napoli'
+  'napoli': 'napoli',
+
+  // Mobile Legends (MLBB) Aliases
+  'mlbb': 'mobile legends',
+  'mobile legend': 'mobile legends',
+  'mobile legends': 'mobile legends',
+  'mpl': 'mpl',
+  'rrq': 'rrq hoshi',
+  'onic': 'fnatic onic',
+  'fnatic': 'fnatic onic',
+  'bren': 'falcons ap bren',
+  'ap bren': 'falcons ap bren',
+  'liquid': 'team liquid',
+  'tlph': 'team liquid ph',
+  'aurora': 'aurora gaming',
+  'blacklist': 'blacklist international',
+  'evos': 'evos glory',
+  'bigetron': 'bigetron alpha',
+  'geek': 'geek fam',
+  'alter ego': 'alter ego',
+  'cfu': 'cfu gaming',
+  'see you soon': 'see you soon',
+  'sys': 'see you soon',
+  'flash': 'team flash',
+  'srg': 'selangor red giants',
+  'vamos': 'team vamos'
 };
 
 function normalizeFootballText(str) {
@@ -274,7 +321,10 @@ function matchSearchQuery(m, rawQuery) {
     m.awayTeam,
     m.league,
     m.country,
-    m.rawLeague
+    m.rawLeague,
+    m.sport,
+    m.sportName,
+    m.sportSub
   ].join(' '));
 
   // Direct substring check
@@ -2080,4 +2130,76 @@ function initBakongDragListeners() {
     }
   });
 }
+
+// --- UNIVERSAL HORIZONTAL MOUSE WHEEL & DRAG-SCROLL ENGINE FOR DESKTOP & MOBILE ---
+function initHorizontalScrollBars() {
+  const selectors = [
+    '.category-tabs',
+    '.sub-filter-row',
+    '.ls-date-ribbon',
+    '.stream-channel-selector',
+    '.history-filter-pills',
+    '.amount-quick-buttons',
+    '.slip-tabs',
+    '.bakong-amount-bar'
+  ];
+
+  selectors.forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => {
+      if (el.dataset.hasScrollInit) return;
+      el.dataset.hasScrollInit = 'true';
+
+      // 1. Mouse wheel horizontal scrolling conversion
+      el.addEventListener('wheel', (e) => {
+        if (e.deltaY !== 0 && el.scrollWidth > el.clientWidth) {
+          e.preventDefault();
+          el.scrollLeft += e.deltaY * 0.9;
+        }
+      }, { passive: false });
+
+      // 2. Mouse click-and-drag scrolling
+      let isDown = false;
+      let startX = 0;
+      let startScrollLeft = 0;
+      let hasMoved = false;
+
+      el.addEventListener('mousedown', (e) => {
+        isDown = true;
+        hasMoved = false;
+        el.classList.add('is-dragging');
+        startX = e.pageX - el.offsetLeft;
+        startScrollLeft = el.scrollLeft;
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (!isDown) return;
+        isDown = false;
+        el.classList.remove('is-dragging');
+        setTimeout(() => { hasMoved = false; }, 60);
+      });
+
+      el.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        const x = e.pageX - el.offsetLeft;
+        const walk = (x - startX) * 1.5;
+        if (Math.abs(walk) > 4) {
+          hasMoved = true;
+          e.preventDefault();
+          el.scrollLeft = startScrollLeft - walk;
+        }
+      });
+
+      // Prevent button clicks if dragging
+      el.querySelectorAll('button, a').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          if (hasMoved) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        }, true);
+      });
+    });
+  });
+}
+
 
