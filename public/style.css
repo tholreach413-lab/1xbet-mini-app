@@ -814,6 +814,7 @@ body {
 }
 
 .ls-match-row {
+  position: relative;
   padding: 12px 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   transition: background 0.15s ease;
@@ -838,9 +839,25 @@ body {
 /* Center Team vs Team Core */
 .ls-match-core {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr auto 1fr auto;
   align-items: center;
   gap: 8px;
+}
+
+.ls-star-fav {
+  background: none;
+  border: none;
+  color: #71717a;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px;
+  line-height: 1;
+  transition: all 0.2s ease;
+}
+
+.ls-star-fav:hover, .ls-star-fav.fav-active {
+  color: #fbbf24;
+  transform: scale(1.2);
 }
 
 .ls-team-box {

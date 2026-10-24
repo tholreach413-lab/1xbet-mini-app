@@ -267,18 +267,41 @@ function renderMatches() {
   }
 
   // 3. Search query filter
+  // 1. Filter logic: If searching, search across ALL 1,000+ matches globally!
+  let filtered = [];
   if (STATE.matchSearchQuery) {
     const q = STATE.matchSearchQuery;
-    filtered = filtered.filter(m => 
+    filtered = matches.filter(m => 
       (m.homeTeam && m.homeTeam.toLowerCase().includes(q)) ||
       (m.awayTeam && m.awayTeam.toLowerCase().includes(q)) ||
       (m.league && m.league.toLowerCase().includes(q)) ||
-      (m.country && m.country.toLowerCase().includes(q))
+      (m.country && m.country.toLowerCase().includes(q)) ||
+      (m.rawLeague && m.rawLeague.toLowerCase().includes(q))
     );
+  } else {
+    // Sport filter
+    filtered = STATE.currentSportFilter === 'all'
+      ? matches
+      : matches.filter(m => m.sport === STATE.currentSportFilter);
+
+    // LiveScore Category / Date filter
+    const lsFilter = STATE.liveScoreFilter || 'all';
+    if (lsFilter === 'live') {
+      filtered = filtered.filter(m => m.isLive);
+    } else if (lsFilter === 'top') {
+      filtered = filtered.filter(m => m.isTop || m.isLive);
+    } else if (lsFilter === 'today') {
+      filtered = filtered.filter(m => m.day === 'Today' || m.isLive);
+    } else if (lsFilter === 'tomorrow') {
+      filtered = filtered.filter(m => m.day === 'Tomorrow');
+    }
   }
 
-  // 4. Smooth +10 Pagination (Never dumps 1,000 items into DOM, 0 lag!)
-  const visibleLimit = STATE.visibleMatchCount || 10;
+  // 2. Smooth Pagination:
+  // When searching: show all matches found (up to 100)
+  // When browsing: show 15 matches at a time to prevent DOM lag
+  const isSearching = Boolean(STATE.matchSearchQuery);
+  const visibleLimit = isSearching ? 100 : (STATE.visibleMatchCount || 15);
   const displayList = filtered.slice(0, visibleLimit);
 
   // Update View More Container & Progress
@@ -288,7 +311,7 @@ function renderMatches() {
   const progressText = document.getElementById('matchesProgressText');
 
   if (viewMoreBox) {
-    if (filtered.length <= 10) {
+    if (isSearching || filtered.length <= 15) {
       viewMoreBox.style.display = 'none';
     } else {
       viewMoreBox.style.display = 'block';
@@ -301,7 +324,7 @@ function renderMatches() {
       } else {
         if (btnMore) btnMore.disabled = false;
         const remaining = filtered.length - displayList.length;
-        const nextBatch = Math.min(10, remaining);
+        const nextBatch = Math.min(15, remaining);
         if (btnMoreText) btnMoreText.textContent = `View More (+${nextBatch} Matches)`;
       }
     }
@@ -311,13 +334,13 @@ function renderMatches() {
     container.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">🔍</div>
-        <div>No matches found. Try another tab or clear your search!</div>
+        <div>No matches found for "${STATE.matchSearchQuery}". Try another team name!</div>
       </div>
     `;
     return;
   }
 
-  // 5. Group Matches by League (Authentic LiveScore App Layout)
+  // 3. Group Matches by League (Authentic LiveScore App Layout)
   const leaguesMap = new Map();
   for (const m of displayList) {
     const leagueKey = m.league || 'Other Matches';
@@ -425,18 +448,21 @@ function generateMatchCardHTML(m) {
     ? `<img src="${m.awayLogo}" class="ls-crest" alt="${m.awayTeam}" loading="lazy" onerror="this.outerHTML='${fallbackAway}'">` 
     : getTeamAvatarFallback(m.awayTeam);
 
+  // LiveScore time & score pill
   const liveScoreTimeHTML = m.isLive 
     ? `<div class="ls-score-cell live">
          <span class="ls-live-clock"><span class="pulsing-dot-orange"></span> ${m.time}</span>
-         <span class="ls-score-digits">${m.homeScore ?? 0} : ${m.awayScore ?? 0}</span>
+         <span class="ls-score-digits">${m.homeScore ?? 0} - ${m.awayScore ?? 0}</span>
        </div>`
     : `<div class="ls-score-cell upcoming">
          <span class="ls-match-time">${m.day === 'Tomorrow' ? 'Tmr ' : ''}${m.time}</span>
-         <span class="ls-match-vs">VS</span>
        </div>`;
 
   return `
     <div class="ls-match-row ${m.isLive ? 'is-live-row' : ''}" id="card_${m.id}">
+      <!-- Live Orange Left Minute Box if live -->
+      ${m.isLive ? `<div class="ls-live-side-pill">${m.time}</div>` : ''}
+      
       <!-- Team vs Team Center Row (Exact LiveScore Layout) -->
       <div class="ls-match-core">
         <div class="ls-team-box home">
@@ -448,7 +474,9 @@ function generateMatchCardHTML(m) {
           ${awayLogoHTML}
           <span class="ls-team-name">${m.awayTeam}</span>
         </div>
+        <button class="ls-star-fav" onclick="this.classList.toggle('fav-active')">☆</button>
       </div>
+
       <!-- 1xBet Quick Betting Odds Strip -->
       <div class="ls-odds-strip">
         <button class="ls-odd-btn ${isSelected('1') ? 'selected' : ''}" id="odd_${m.id}_1" onclick="toggleOddSelection('${m.id}', '1', 'Home (${m.homeTeam})', ${m.odds.home})">

@@ -51,23 +51,32 @@ let cachedMatches = [];
 let lastMatchesFetch = 0;
 
 async function fetchFromLiveScore() {
-  const now = new Date();
-  const dToday = new Date(now.getTime());
-  const dTomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const ymdToday = dToday.toISOString().slice(0, 10).replace(/-/g, '');
-  const ymdTomorrow = dTomorrow.toISOString().slice(0, 10).replace(/-/g, '');
+  const tzOffset = 7 * 60 * 60 * 1000;
+  const localNow = new Date(Date.now() + tzOffset);
+  const dToday = localNow;
+  const dTomorrow = new Date(localNow.getTime() + 24 * 60 * 60 * 1000);
+  
+  const formatYMD = (d) => {
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    return `${y}${m}${day}`;
+  };
+
+  const ymdToday = formatYMD(dToday);
+  const ymdTomorrow = formatYMD(dTomorrow);
   
   const [liveRes, todayRes, tomorrowRes] = await Promise.allSettled([
     fetch('https://prod-public-api.livescore.com/v1/api/app/live/soccer/0.00', { headers: { 'User-Agent': 'Mozilla/5.0' } }),
-    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymdToday}/0.00`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
-    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymdTomorrow}/0.00`, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymdToday}/7.00`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
+    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymdTomorrow}/7.00`, { headers: { 'User-Agent': 'Mozilla/5.0' } })
   ]);
 
   const matches = [];
   const seenIds = new Set();
   const TOP_LEAGUES = [
     'Premier League', 'LaLiga', 'Serie A', 'Bundesliga', 'Ligue 1',
-    'UEFA Champions League', 'UEFA Europa League', 'FA Cup', 'EFL Cup', 'Copa del Rey'
+    'UEFA Champions League', 'UEFA Europa League', 'Coupe de France', 'FA Cup', 'EFL Cup', 'Copa del Rey'
   ];
 
   function parseStages(stages, isLiveForced = false, dayLabel = 'Today') {
@@ -104,11 +113,9 @@ async function fetchFromLiveScore() {
           awayLogo: awayImg,
           awayScore: ev.Tr2 !== undefined ? parseInt(ev.Tr2) : null,
           odds: {
-            home: +(1.45 + Math.random() * 1.5).toFixed(2),
-            draw: +(3.10 + Math.random() * 1.2).toFixed(2),
-            away: +(1.85 + Math.random() * 2.2).toFixed(2),
-            over25: +(1.65 + Math.random() * 0.4).toFixed(2),
-            under25: +(1.90 + Math.random() * 0.5).toFixed(2)
+            home: +(1.45 + (ev.Eid % 10) * 0.15).toFixed(2),
+            draw: +(3.10 + (ev.Eid % 7) * 0.12).toFixed(2),
+            away: +(1.85 + (ev.Eid % 13) * 0.18).toFixed(2)
           }
         });
       }
@@ -143,8 +150,7 @@ async function fetchFromLiveScore() {
     return 0;
   });
 
-  // Keep payload under 30KB so server and mobile clients load instantly with zero lag
-  return matches.slice(0, 100);
+  return matches;
 }
 
 async function fetchRealLiveMatches() {
