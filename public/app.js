@@ -1413,16 +1413,37 @@ function alertNotification(title, msg) {
   showToast(`${title}: ${msg}`);
 }
 
-// --- 1xTV LIVE STREAMING ENGINE ---
+// --- 1xTV REAL-TIME LIVE STREAMING AUTO-FINDER ---
 let currentStreamMatchId = 'm_1';
 
-const STREAM_VIDEOS = {
-  m_1: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-  m_2: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-  m_3: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-  m_4: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4",
-  m_6: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4"
-};
+async function autoFindLiveStream(query) {
+  const overlay = document.getElementById('streamLoadingOverlay');
+  const loadingText = document.getElementById('streamLoadingText');
+  const iframe = document.getElementById('liveStreamIframe');
+
+  if (overlay) overlay.classList.add('active');
+  if (loadingText) loadingText.textContent = `🔍 SEARCHING LIVE STREAM: "${query}"...`;
+
+  try {
+    const res = await fetch(`/api/stream/find?q=${encodeURIComponent(query)}`);
+    const data = await res.json();
+
+    if (data.embedUrl && iframe) {
+      iframe.src = data.embedUrl;
+      if (loadingText) loadingText.textContent = data.isLive ? '🟢 REAL-TIME LIVE STREAM CONNECTED!' : '🎬 MATCH BROADCAST LOADED!';
+      setTimeout(() => {
+        if (overlay) overlay.classList.remove('active');
+      }, 1200);
+      showToast(`📺 Auto-found Live Stream for ${query}!`);
+    } else {
+      if (iframe) iframe.src = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query + ' live')}&autoplay=1`;
+      if (overlay) overlay.classList.remove('active');
+    }
+  } catch (e) {
+    if (iframe) iframe.src = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query + ' live')}&autoplay=1`;
+    if (overlay) overlay.classList.remove('active');
+  }
+}
 
 function watchMatchStream(matchId) {
   triggerHaptic('medium');
@@ -1442,17 +1463,8 @@ function switchStreamMatch(matchId) {
 
   const match = MATCHES_DATA.find(m => m.id === matchId) || MATCHES_DATA[0];
 
-  // Update video source
-  const video = document.getElementById('streamVideoPlayer');
-  const source = document.getElementById('streamVideoSource');
-  if (video && source) {
-    const videoUrl = STREAM_VIDEOS[matchId] || STREAM_VIDEOS.m_1;
-    if (source.src !== videoUrl) {
-      source.src = videoUrl;
-      video.load();
-      video.play().catch(e => console.log('Autoplay prevented:', e));
-    }
-  }
+  // Auto-find real-time live stream for this match!
+  autoFindLiveStream(`${match.homeTeam} vs ${match.awayTeam}`);
 
   // Update overlay score
   const scoreBadge = document.getElementById('streamMatchPill');
@@ -1470,6 +1482,19 @@ function switchStreamMatch(matchId) {
   if (titleEl) titleEl.textContent = `⚡ In-Play Live Odds (${match.homeTeam} vs ${match.awayTeam})`;
 
   renderStreamOdds(match);
+}
+
+function searchLiveStreamCustom() {
+  triggerHaptic('medium');
+  const input = document.getElementById('streamSearchInput');
+  const query = input?.value?.trim();
+  if (!query) {
+    showToast("Please enter a team or match to search!", "warning");
+    return;
+  }
+  autoFindLiveStream(query);
+  const scoreBadge = document.getElementById('streamMatchPill');
+  if (scoreBadge) scoreBadge.textContent = `🔴 Live: ${query}`;
 }
 
 function renderStreamOdds(m) {
@@ -1498,37 +1523,11 @@ function renderStreamOdds(m) {
   `;
 }
 
-function toggleStreamAudio() {
-  triggerHaptic('light');
-  const video = document.getElementById('streamVideoPlayer');
-  const icon = document.getElementById('audioIcon');
-  const text = document.getElementById('audioText');
-  if (!video) return;
-
-  video.muted = !video.muted;
-  if (icon && text) {
-    icon.textContent = video.muted ? '🔇' : '🔊';
-    text.textContent = video.muted ? 'Unmute' : 'Mute';
-  }
-}
-
-function toggleStreamFullscreen() {
-  triggerHaptic('medium');
-  const wrapper = document.getElementById('streamVideoWrapper');
-  const video = document.getElementById('streamVideoPlayer');
-  if (!wrapper) return;
-
-  if (document.fullscreenElement) {
-    document.exitFullscreen().catch(e => {});
-  } else if (wrapper.requestFullscreen) {
-    wrapper.requestFullscreen().catch(e => {});
-  } else if (video && video.webkitEnterFullscreen) {
-    video.webkitEnterFullscreen();
-  }
-}
-
-// Initialize default stream odds
+// Initialize default stream odds and start default auto-find
 setTimeout(() => {
   const defaultMatch = MATCHES_DATA[0];
-  if (defaultMatch) renderStreamOdds(defaultMatch);
-}, 500);
+  if (defaultMatch) {
+    renderStreamOdds(defaultMatch);
+    autoFindLiveStream(`${defaultMatch.homeTeam} vs ${defaultMatch.awayTeam}`);
+  }
+}, 600);

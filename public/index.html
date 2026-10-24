@@ -205,12 +205,27 @@
             </button>
           </div>
 
-          <!-- Video Player Arena -->
+          <!-- Live Stream Search Bar (Auto-Finds Any Game in Real Time) -->
+          <div class="stream-search-bar">
+            <input type="text" id="streamSearchInput" class="stream-search-input" placeholder="🔍 Search any team/match live (e.g. Arsenal, Real Madrid, NBA)...">
+            <button class="btn-search-stream" onclick="searchLiveStreamCustom()">
+              <span>Auto-Find Live</span>
+            </button>
+          </div>
+
+          <!-- Video Player Arena (Real-Time Live Embed) -->
           <div class="stream-player-card">
             <div class="stream-video-wrapper" id="streamVideoWrapper">
-              <video id="streamVideoPlayer" autoplay loop muted playsinline poster="images/sports_banner.jpg">
-                <source id="streamVideoSource" src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" type="video/mp4">
-              </video>
+              <iframe id="liveStreamIframe" 
+                src="https://www.youtube.com/embed/5ecHB8Ygo8k?autoplay=1&mute=0&playsinline=1" 
+                frameborder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                allowfullscreen>
+              </iframe>
+              <div class="stream-loading-overlay" id="streamLoadingOverlay">
+                <span class="stream-spinner"></span>
+                <span class="stream-load-text" id="streamLoadingText">CONNECTING REAL-TIME LIVE STREAM...</span>
+              </div>
               <!-- Video Overlays -->
               <div class="video-overlay-top">
                 <div class="stream-live-pill">
@@ -220,14 +235,6 @@
                   ⚽ Real Madrid 2 - 1 Man City (76')
                 </div>
                 <span class="stream-quality-tag">1080p 60fps</span>
-              </div>
-              <div class="video-overlay-bottom">
-                <button class="btn-video-control" id="btnStreamAudio" onclick="toggleStreamAudio()">
-                  <span id="audioIcon">🔇</span> <span id="audioText">Unmute</span>
-                </button>
-                <button class="btn-video-control" onclick="toggleStreamFullscreen()">
-                  <span>⛶</span> Fullscreen
-                </button>
               </div>
             </div>
           </div>

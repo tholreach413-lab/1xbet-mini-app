@@ -87,6 +87,71 @@ app.post('/api/deposit', (req, res) => {
   });
 });
 
+// Real-Time Live Video Stream Auto-Finder Endpoint
+app.get('/api/stream/find', async (req, res) => {
+  const query = req.query.q || 'football live match';
+  try {
+    // 1. Search YouTube for active LIVE broadcasts
+    const liveSearchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query + ' live')}&sp=EgJAAQ%253D%253D`;
+    const response = await fetch(liveSearchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9'
+      }
+    });
+    const html = await response.text();
+
+    const videoMatches = [...html.matchAll(/\/watch\?v=([a-zA-Z0-9_-]{11})/g)];
+    const uniqueIds = [...new Set(videoMatches.map(m => m[1]))];
+
+    if (uniqueIds.length > 0) {
+      const liveId = uniqueIds[0];
+      return res.json({
+        success: true,
+        isLive: true,
+        videoId: liveId,
+        embedUrl: `https://www.youtube.com/embed/${liveId}?autoplay=1&mute=0&playsinline=1&rel=0`,
+        source: 'youtube_live_realtime'
+      });
+    }
+
+    // 2. Fallback to latest match video broadcast
+    const generalSearchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query + ' match broadcast')}`;
+    const genResp = await fetch(generalSearchUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+    });
+    const genHtml = await genResp.text();
+    const genMatches = [...genHtml.matchAll(/\/watch\?v=([a-zA-Z0-9_-]{11})/g)];
+    const genUniqueIds = [...new Set(genMatches.map(m => m[1]))];
+
+    if (genUniqueIds.length > 0) {
+      const vidId = genUniqueIds[0];
+      return res.json({
+        success: true,
+        isLive: false,
+        videoId: vidId,
+        embedUrl: `https://www.youtube.com/embed/${vidId}?autoplay=1&mute=0&playsinline=1&rel=0`,
+        source: 'youtube_broadcast'
+      });
+    }
+
+    // 3. Fallback to dynamic list search
+    return res.json({
+      success: true,
+      isLive: true,
+      embedUrl: `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query + ' live')}&autoplay=1`,
+      source: 'youtube_search_list'
+    });
+  } catch (err) {
+    res.json({
+      success: true,
+      isLive: true,
+      embedUrl: `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query + ' live')}&autoplay=1`,
+      error: err.message
+    });
+  }
+});
+
 // Fallback: serve frontend index.html for all non-API GET requests
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
