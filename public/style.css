@@ -215,12 +215,24 @@ body {
 .live-ticker-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
   background: #09172b;
-  padding: 6px 14px;
+  padding: 0;
   font-size: 11px;
   border-bottom: 1px solid var(--border-light);
   overflow: hidden;
+  height: 32px;
+  position: relative;
+}
+
+.ticker-tag-wrapper {
+  display: flex;
+  align-items: center;
+  padding: 0 10px 0 14px;
+  background: #09172b;
+  z-index: 10;
+  height: 100%;
+  flex-shrink: 0;
+  box-shadow: 12px 0 16px -4px #09172b;
 }
 
 .ticker-tag {
@@ -228,9 +240,10 @@ body {
   align-items: center;
   gap: 5px;
   background: rgba(255, 51, 102, 0.2);
+  border: 1px solid rgba(255, 51, 102, 0.35);
   color: var(--1x-red);
   font-weight: 800;
-  padding: 2px 7px;
+  padding: 2.5px 7px;
   border-radius: 4px;
   font-size: 9.5px;
   letter-spacing: 0.5px;
@@ -251,17 +264,29 @@ body {
   100% { transform: scale(0.85); opacity: 0.7; }
 }
 
-.ticker-content {
+.ticker-scroll-window {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  height: 100%;
   display: flex;
-  gap: 12px;
+  align-items: center;
+  mask-image: linear-gradient(to right, transparent 0%, black 14px, black 95%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 14px, black 95%, transparent 100%);
+}
+
+.ticker-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
   white-space: nowrap;
-  animation: marquee 26s linear infinite;
+  animation: marquee 32s linear infinite;
   color: var(--text-muted);
 }
 
 @keyframes marquee {
-  0% { transform: translateX(20%); }
-  100% { transform: translateX(-100%); }
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
 /* ==========================================================================
@@ -3905,5 +3930,186 @@ input:checked + .slider:before {
   color: var(--1x-gold);
   text-shadow: 0 0 16px rgba(251, 191, 36, 0.5);
 }
+
+/* ==========================================================================
+   AUTHENTIC BAKONG KHQR MODAL & CARD DESIGN (EXACT USER SPECIFICATION)
+   ========================================================================== */
+.modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.75) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.fade-in { animation: fadeIn 0.25s ease-out forwards; }
+.fade-out { animation: fadeOut 0.2s ease-in forwards; }
+
+.qr-card {
+  box-shadow: rgba(0, 0, 0, 0.12) 0px 8px 24px 0px;
+  border-radius: 22px;
+  background: #ffffff !important;
+}
+
+.dashed-line {
+  background: linear-gradient(90deg, rgba(128,128,128,0.85) 65%, rgba(255,255,255,0) 0px);
+  background-size: 15px 1.5px;
+  background-position: 50% 100%;
+  background-repeat: repeat-x;
+}
+
+.red-triangle {
+  border-left: 19.5px solid transparent;
+  border-top: 19.5px solid rgb(226, 26, 26);
+  height: 0;
+  width: 0;
+}
+
+.draggable-thumb {
+  width: 44px;
+  height: 4px;
+  background: white;
+  border-radius: 2px;
+}
+
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Quick Amount Selection Bar inside Bakong Modal */
+.bakong-amount-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.bakong-amt-chip {
+  background: #f1f5f9;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e293b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bakong-amt-chip:hover,
+.bakong-amt-chip.active {
+  background: #e21a1a;
+  border-color: #e21a1a;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(226, 26, 26, 0.35);
+}
+
+.bakong-live-poll {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: #059669;
+  font-weight: 700;
+  margin-top: 10px;
+}
+
+.bakong-poll-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 10px #10b981;
+  animation: pulseDot 1.4s infinite;
+}
+
+.bakong-open-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #0f396b;
+  color: #ffffff !important;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  text-decoration: none;
+  margin: 10px auto 0;
+  max-width: 240px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bakong-open-btn:hover {
+  background: #092547;
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   DESKTOP COMPUTER SCROLLING & SLEEK SCROLLBARS
+   ========================================================================== */
+html {
+  overflow-y: scroll !important;
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: hidden;
+  overflow-y: visible !important;
+}
+
+/* Custom Sleek Desktop Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #071322;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1b355a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #254a7c;
+}
+
+@media (min-width: 769px) {
+  body {
+    background-color: #040c17;
+  }
+  .tma-app {
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.8);
+    border-left: 1px solid rgba(255, 255, 255, 0.06);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+  }
+}
+
 
 

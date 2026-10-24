@@ -133,6 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initHeroCarousel();
   initCrashEngine();
   startLiveOddsSimulation();
+  initBakongDragListeners();
 });
 
 // Update Balance UI everywhere
@@ -339,10 +340,16 @@ function renderMatches() {
   if (isSearching) {
     filtered = matches.filter(m => matchSearchQuery(m, searchQuery));
   } else {
-    // Sport filter
-    filtered = STATE.currentSportFilter === 'all'
-      ? matches
-      : matches.filter(m => m.sport === STATE.currentSportFilter);
+    // Sport filter (Supports football, basketball, tennis, mlbb Mobile Legends, esports)
+    if (STATE.currentSportFilter === 'all') {
+      filtered = matches;
+    } else if (STATE.currentSportFilter === 'mlbb') {
+      filtered = matches.filter(m => m.sport === 'mlbb');
+    } else if (STATE.currentSportFilter === 'esports') {
+      filtered = matches.filter(m => m.sport === 'esports' || m.sport === 'mlbb');
+    } else {
+      filtered = matches.filter(m => m.sport === STATE.currentSportFilter);
+    }
 
     // LiveScore Category / Date filter
     const lsFilter = STATE.liveScoreFilter || 'all';
@@ -628,10 +635,6 @@ function generateMatchCardHTML(m) {
         <button class="ls-odd-btn ${isSelected('2') ? 'selected' : ''}" id="odd_${m.id}_2" onclick="toggleOddSelection('${m.id}', '2', 'Away (${m.awayTeam})', ${m.odds.away})">
           <span class="lbl">2</span>
           <span class="val">${m.odds.away.toFixed(2)}</span>
-        </button>
-        <button class="ls-stream-btn ${m.isLive ? 'live-on' : ''}" onclick="watchMatchStream('${m.id}')" title="Watch live match stream">
-          <svg class="stream-icon-svg" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          <span class="ls-stream-txt">Live</span>
         </button>
       </div>
     </div>
@@ -1466,14 +1469,14 @@ function spinSlot() {
 let activePaylinkTxn = null;
 let paylinkPollInterval = null;
 
-function openDepositModal() {
-  triggerHaptic('selection');
-  document.getElementById('depositModal').classList.add('active');
+let currentKhqrAmount = 20;
+
+function openDepositModal(initialAmt) {
+  openKhqrModal(initialAmt || currentKhqrAmount || 20);
 }
 
 function closeDepositModal() {
-  document.getElementById('depositModal').classList.remove('active');
-  resetPaylinkDepositForm();
+  closeKhqrModal();
 }
 
 function openWithdrawModal() {
@@ -1485,26 +1488,104 @@ function closeWithdrawModal() {
   document.getElementById('withdrawModal').classList.remove('active');
 }
 
-function setDepositAmt(amt) {
-  triggerHaptic('light');
-  document.getElementById('depositAmountInput').value = amt;
-  document.querySelectorAll('.amount-quick-buttons .amt-btn').forEach(b => {
-    b.classList.toggle('active', b.textContent === `$${amt}`);
-  });
-}
+function openKhqrModal(amount) {
+  triggerHaptic('selection');
+  currentKhqrAmount = parseFloat(amount) || 20;
+  
+  const modal = document.getElementById('bakongModal');
+  const desktopModal = document.getElementById('bakongModalDesktop');
+  const mobileModal = document.getElementById('bakongModalMobile');
+  if (!modal) return;
 
-async function generatePaylinkDeposit() {
-  const amtInput = document.getElementById('depositAmountInput');
-  const amt = parseFloat(amtInput?.value) || 20;
-  if (amt <= 0) {
-    showToast("Please enter a valid deposit amount!", "warning");
-    return;
+  const isMobile = window.innerWidth <= 768;
+  modal.style.display = 'block';
+  modal.classList.remove('hidden', 'fade-out');
+  modal.classList.add('fade-in');
+
+  if (isMobile) {
+    if (desktopModal) desktopModal.style.display = 'none';
+    if (mobileModal) {
+      mobileModal.style.display = 'block';
+      setTimeout(() => {
+        mobileModal.style.transform = 'translateY(0)';
+      }, 15);
+    }
+  } else {
+    if (mobileModal) mobileModal.style.display = 'none';
+    if (desktopModal) {
+      desktopModal.style.display = 'block';
+      desktopModal.classList.add('fade-in');
+    }
   }
 
-  const btn = document.getElementById('btnGeneratePaylinkQR');
-  const btnTxt = document.getElementById('btnGeneratePaylinkText');
-  if (btn) btn.disabled = true;
-  if (btnTxt) btnTxt.textContent = "Connecting PayLink Gateway...";
+  // Update active chips in modal
+  document.querySelectorAll('.bakong-amt-chip').forEach(c => {
+    c.classList.toggle('active', c.textContent === `$${currentKhqrAmount}`);
+  });
+
+  // Fetch real KHQR from PayLink
+  fetchAndDisplayKhqr(currentKhqrAmount);
+}
+
+function closeKhqrModal() {
+  if (paylinkPollInterval) clearInterval(paylinkPollInterval);
+  activePaylinkTxn = null;
+
+  const modal = document.getElementById('bakongModal');
+  const desktopModal = document.getElementById('bakongModalDesktop');
+  const mobileModal = document.getElementById('bakongModalMobile');
+  if (!modal) return;
+
+  const isMobile = window.innerWidth <= 768;
+  if (isMobile && mobileModal) {
+    mobileModal.style.transform = 'translateY(100%)';
+    setTimeout(() => {
+      modal.classList.add('hidden');
+      modal.classList.remove('fade-in');
+      modal.style.display = 'none';
+      mobileModal.style.display = 'none';
+    }, 380);
+  } else if (desktopModal) {
+    desktopModal.classList.add('fade-out');
+    setTimeout(() => {
+      modal.classList.add('hidden');
+      modal.classList.remove('fade-in');
+      modal.style.display = 'none';
+      desktopModal.classList.remove('fade-out');
+      desktopModal.style.display = 'none';
+    }, 200);
+  } else {
+    modal.style.display = 'none';
+  }
+}
+
+function setKhqrDepositAmount(amt) {
+  triggerHaptic('light');
+  currentKhqrAmount = parseFloat(amt) || 20;
+  document.querySelectorAll('.bakong-amt-chip').forEach(c => {
+    c.classList.toggle('active', c.textContent === `$${currentKhqrAmount}`);
+  });
+  fetchAndDisplayKhqr(currentKhqrAmount);
+}
+
+async function fetchAndDisplayKhqr(amt) {
+  if (paylinkPollInterval) clearInterval(paylinkPollInterval);
+  activePaylinkTxn = null;
+
+  // Set amounts in display
+  const amtStr = amt.toFixed(2);
+  const amtEl = document.getElementById('khqr-amount');
+  const amtMobileEl = document.getElementById('khqr-amount-mobile');
+  if (amtEl) amtEl.textContent = amtStr;
+  if (amtMobileEl) amtMobileEl.textContent = amtStr;
+
+  const qrDesktop = document.getElementById('bakongQR');
+  const qrMobile = document.getElementById('bakongQR-mobile');
+  const statusDesk = document.getElementById('bakongPollStatusText');
+  const statusMob = document.getElementById('bakongPollStatusTextMobile');
+
+  if (statusDesk) statusDesk.textContent = "Generating official Bakong KHQR...";
+  if (statusMob) statusMob.textContent = "Generating official Bakong KHQR...";
 
   try {
     const res = await fetch('/api/paylink/generate-qr', {
@@ -1513,9 +1594,8 @@ async function generatePaylinkDeposit() {
       body: JSON.stringify({ amount: amt, userId: STATE.user.id })
     });
     const data = await res.json();
-
     if (!data.success || !data.qrString) {
-      throw new Error(data.error || 'Failed to generate KHQR');
+      throw new Error(data.error || 'Failed to generate Bakong KHQR');
     }
 
     activePaylinkTxn = {
@@ -1523,56 +1603,41 @@ async function generatePaylinkDeposit() {
       md5: data.md5,
       amount: data.amount,
       deepLink: data.deepLink,
-      merchantName: data.merchantName
+      merchantName: data.merchantName,
+      qrString: data.qrString
     };
 
-    // Populate QR Step UI
-    const merchantEl = document.getElementById('plkMerchantName');
-    const tranIdEl = document.getElementById('plkTranIdDisplay');
-    const amtEl = document.getElementById('plkAmountDisplay');
-    if (merchantEl) merchantEl.textContent = data.merchantName || '1xBet Official';
-    if (tranIdEl) tranIdEl.textContent = `ID: ${data.tranId}`;
-    if (amtEl) amtEl.textContent = `$${data.amountFormatted || amt.toFixed(2)}`;
-    
-    // Generate QR image from qrString using reliable QR server
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=8&data=${encodeURIComponent(data.qrString)}`;
-    const qrImg = document.getElementById('paylinkQrImage');
-    if (qrImg) qrImg.src = qrUrl;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=8&data=${encodeURIComponent(data.qrString)}`;
+    if (qrDesktop) qrDesktop.src = qrUrl;
+    if (qrMobile) qrMobile.src = qrUrl;
 
-    // Switch step view
-    const step1 = document.getElementById('paylinkAmountStep');
-    const step2 = document.getElementById('paylinkQrStep');
-    if (step1) step1.style.display = 'none';
-    if (step2) step2.style.display = 'block';
+    // Setup deep link
+    const deepDesk = document.getElementById('bakongDeepLinkBtn');
+    const deepMob = document.getElementById('bakongDeepLinkBtnMobile');
+    const linkHref = data.deepLink || '#';
+    if (deepDesk) deepDesk.href = linkHref;
+    if (deepMob) deepMob.href = linkHref;
 
-    triggerHaptic('success');
-    showToast(`KHQR generated for $${amt.toFixed(2)}. Scan to deposit!`);
+    if (statusDesk) statusDesk.textContent = "Auto-verifying payment with Bakong...";
+    if (statusMob) statusMob.textContent = "Auto-verifying payment with Bakong...";
 
-    // Start auto polling payment status
-    startPaylinkAutoPoll();
+    // Start auto polling in background (NO manual button needed!)
+    startPaylinkBackgroundAutoPoll();
 
   } catch (err) {
     console.error("PayLink generation error:", err);
+    if (statusDesk) statusDesk.textContent = "Gateway connecting... retry";
+    if (statusMob) statusMob.textContent = "Gateway connecting... retry";
     showToast(`Gateway Error: ${err.message}`, "warning");
-  } finally {
-    if (btn) btn.disabled = false;
-    if (btnTxt) btnTxt.textContent = "Generate PayLink KHQR";
   }
 }
 
-function openPaylinkDeepLink() {
-  if (!activePaylinkTxn?.deepLink) {
-    showToast("Bakong deep link not available. Please scan the QR code.", "warning");
-    return;
-  }
-  triggerHaptic('medium');
-  window.location.href = activePaylinkTxn.deepLink;
-}
-
-function startPaylinkAutoPoll() {
+function startPaylinkBackgroundAutoPoll() {
   if (paylinkPollInterval) clearInterval(paylinkPollInterval);
-  const statusTxt = document.getElementById('plkStatusText');
   let attempts = 0;
+
+  const statusDesk = document.getElementById('bakongPollStatusText');
+  const statusMob = document.getElementById('bakongPollStatusTextMobile');
 
   paylinkPollInterval = setInterval(async () => {
     if (!activePaylinkTxn) {
@@ -1580,7 +1645,9 @@ function startPaylinkAutoPoll() {
       return;
     }
     attempts++;
-    if (statusTxt) statusTxt.textContent = `Awaiting payment confirmation... (checking #${attempts})`;
+    const pollText = `Auto-verifying payment with Bakong... (checking #${attempts})`;
+    if (statusDesk) statusDesk.textContent = pollText;
+    if (statusMob) statusMob.textContent = pollText;
 
     try {
       const res = await fetch('/api/paylink/check-payment', {
@@ -1600,59 +1667,12 @@ function startPaylinkAutoPoll() {
       }
     } catch (e) {}
 
-    if (attempts >= 60) {
+    if (attempts >= 100) {
       clearInterval(paylinkPollInterval);
-      if (statusTxt) statusTxt.textContent = "QR code expired. Please generate a new QR.";
+      if (statusDesk) statusDesk.textContent = "QR expired. Click an amount to refresh.";
+      if (statusMob) statusMob.textContent = "QR expired. Click an amount to refresh.";
     }
-  }, 4000);
-}
-
-async function checkPaylinkPaymentManual() {
-  if (!activePaylinkTxn) return;
-  triggerHaptic('medium');
-  const btnTxt = document.getElementById('btnCheckPaymentText');
-  if (btnTxt) btnTxt.textContent = "Verifying with Bank...";
-
-  try {
-    const res = await fetch('/api/paylink/check-payment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tranId: activePaylinkTxn.tranId,
-        md5: activePaylinkTxn.md5,
-        userId: STATE.user.id,
-        amount: activePaylinkTxn.amount
-      })
-    });
-    const data = await res.json();
-
-    if (data.paid) {
-      if (paylinkPollInterval) clearInterval(paylinkPollInterval);
-      handlePaylinkSuccess(activePaylinkTxn.amount, activePaylinkTxn.tranId);
-    } else {
-      // Instant confirmation fallback for user test/demo flow
-      const confirmRes = await fetch('/api/paylink/confirm-instant', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: STATE.user.id,
-          amount: activePaylinkTxn.amount,
-          tranId: activePaylinkTxn.tranId
-        })
-      });
-      const confirmData = await confirmRes.json();
-      if (confirmData.success) {
-        if (paylinkPollInterval) clearInterval(paylinkPollInterval);
-        handlePaylinkSuccess(activePaylinkTxn.amount, activePaylinkTxn.tranId);
-      } else {
-        showToast("Payment not received yet. Please scan and pay with Bakong first.", "warning");
-      }
-    }
-  } catch (e) {
-    handlePaylinkSuccess(activePaylinkTxn.amount, activePaylinkTxn.tranId);
-  } finally {
-    if (btnTxt) btnTxt.textContent = "I Have Paid • Verify Now";
-  }
+  }, 3000);
 }
 
 function handlePaylinkSuccess(amount, tranId) {
@@ -1664,26 +1684,33 @@ function handlePaylinkSuccess(amount, tranId) {
 
   STATE.transactions.unshift({
     type: 'in',
-    name: `PayLink Bank KHQR (${tranId || 'Verified'})`,
+    name: `PayLink Bakong KHQR (${tranId || 'Verified'})`,
     date: 'Just now',
     amount: amount
   });
   renderTransactions();
 
-  resetPaylinkDepositForm();
-  closeDepositModal();
-  showToast(`Deposit of $${amount.toFixed(2)} confirmed via PayLink Bank!`);
+  closeKhqrModal();
+  showToast(`🎉 Payment Confirmed! $${amount.toFixed(2)} credited to your account!`);
 }
 
-function resetPaylinkDepositForm() {
-  if (paylinkPollInterval) clearInterval(paylinkPollInterval);
-  activePaylinkTxn = null;
-  const step1 = document.getElementById('paylinkAmountStep');
-  const step2 = document.getElementById('paylinkQrStep');
-  if (step1) step1.style.display = 'block';
-  if (step2) step2.style.display = 'none';
-  const qrImg = document.getElementById('paylinkQrImage');
-  if (qrImg) qrImg.src = '';
+function downloadKhqrImage(event) {
+  if (event) event.preventDefault();
+  const qrDesktop = document.getElementById('bakongQR');
+  const qrMobile = document.getElementById('bakongQR-mobile');
+  const src = qrDesktop?.src || qrMobile?.src;
+  if (!src) {
+    showToast("QR code not ready yet", "warning");
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = src;
+  a.download = `Bakong_KHQR_$${currentKhqrAmount}.png`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  triggerHaptic('success');
+  showToast("KHQR image downloaded! Upload to your banking app.");
 }
 
 function executeWithdrawal() {
@@ -1968,3 +1995,89 @@ function renderStreamOdds(m) {
     </button>
   `;
 }
+
+// --- BAKONG MOBILE SHEET TOUCH DRAG DISMISS HANDLER ---
+let bakongTouchStartY = 0;
+let bakongIsDragging = false;
+
+function initBakongDragListeners() {
+  const modal = document.getElementById('bakongModal');
+  const mobileModal = document.getElementById('bakongModalMobile');
+  const dragArea = document.getElementById('mobileDragArea');
+  const redHeader = document.getElementById('redHeaderDraggable');
+
+  if (!modal || !mobileModal) return;
+
+  function handleTouchStart(e) {
+    bakongTouchStartY = e.touches[0].clientY;
+    bakongIsDragging = true;
+  }
+
+  function handleTouchMove(e) {
+    if (!bakongIsDragging) return;
+    const touchCurrentY = e.touches[0].clientY;
+    const deltaY = touchCurrentY - bakongTouchStartY;
+    if (deltaY > 0) {
+      const newTransform = Math.min(100, (deltaY / window.innerHeight * 100));
+      mobileModal.style.transition = 'none';
+      mobileModal.style.transform = `translateY(${newTransform}%)`;
+    }
+  }
+
+  function handleTouchEnd(e) {
+    if (!bakongIsDragging) return;
+    bakongIsDragging = false;
+    const touchEndY = e.changedTouches[0].clientY;
+    const deltaY = touchEndY - bakongTouchStartY;
+    mobileModal.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+    if (deltaY > 90) {
+      closeKhqrModal();
+    } else {
+      mobileModal.style.transform = 'translateY(0)';
+    }
+  }
+
+  [dragArea, redHeader].forEach(el => {
+    if (el) {
+      el.addEventListener('touchstart', handleTouchStart, { passive: true });
+      el.addEventListener('touchmove', handleTouchMove, { passive: true });
+      el.addEventListener('touchend', handleTouchEnd, { passive: true });
+    }
+  });
+
+  // Modal backdrop click closes modal
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) {
+      closeKhqrModal();
+    }
+  });
+
+  // Escape key closes modal
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && modal.style.display !== 'none' && !modal.classList.contains('hidden')) {
+      closeKhqrModal();
+    }
+  });
+
+  // Resize listener to switch desktop vs mobile modal cleanly
+  window.addEventListener('resize', function() {
+    if (modal.style.display !== 'none' && !modal.classList.contains('hidden')) {
+      const isMobile = window.innerWidth <= 768;
+      const desktopModal = document.getElementById('bakongModalDesktop');
+      if (isMobile) {
+        if (desktopModal) desktopModal.style.display = 'none';
+        if (mobileModal) {
+          mobileModal.style.display = 'block';
+          mobileModal.style.transform = 'translateY(0)';
+        }
+      } else {
+        if (mobileModal) {
+          mobileModal.style.transform = 'translateY(100%)';
+          mobileModal.style.display = 'none';
+        }
+        if (desktopModal) desktopModal.style.display = 'block';
+      }
+    }
+  });
+}
+

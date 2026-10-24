@@ -46,19 +46,30 @@
       </div>
     </header>
 
-    <!-- LIVE MARQUEE / TICKER -->
+    <!-- LIVE MARQUEE / TICKER (Isolated tag wrapper & scroll window to prevent collision) -->
     <div class="live-ticker-bar">
-      <div class="ticker-tag">
-        <span class="pulsing-dot"></span> LIVE
+      <div class="ticker-tag-wrapper">
+        <div class="ticker-tag">
+          <span class="pulsing-dot"></span> LIVE
+        </div>
       </div>
-      <div class="ticker-content" id="tickerText">
-        <span><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20M2 12h20"/></svg> Real Madrid 2 - 1 Man City (74')</span>
-        <span>•</span>
-        <span><svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><path d="M12 2c1 3 3 5 5 7a7 7 0 1 1-10 0c2-2 4-4 5-7z"/></svg> Aviator crashed at 14.82x</span>
-        <span>•</span>
-        <span><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg> Djokovic vs Alcaraz: Set 3 Tiebreak</span>
-        <span>•</span>
-        <span><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> @alex_win won $4,200 on 5-fold Express!</span>
+      <div class="ticker-scroll-window">
+        <div class="ticker-content" id="tickerText">
+          <span><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="12 7 15 10 13.5 14 10.5 14 9 10"/><line x1="12" y1="7" x2="12" y2="2"/><line x1="15" y1="10" x2="19.5" y2="8.5"/><line x1="13.5" y1="14" x2="17" y2="18.5"/><line x1="10.5" y1="14" x2="7" y2="18.5"/><line x1="9" y1="10" x2="4.5" y2="8.5"/></svg> Real Madrid 2 - 1 Man City (74')</span>
+          <span>•</span>
+          <span><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg> Aviator crashed at 14.82x</span>
+          <span>•</span>
+          <span><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M5.5 5.5a10 10 0 0 1 0 13M18.5 5.5a10 10 0 0 0 0 13"/></svg> Djokovic vs Alcaraz: Set 3 Tiebreak</span>
+          <span>•</span>
+          <span><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6 2 2-6-3-3M6 13l-3 3 2 6 6-2"/></svg> MPL: Team Liquid PH vs Aurora</span>
+          <span>•</span>
+          <span><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> @alex_win won $4,200 on 5-fold Express!</span>
+          <!-- Duplicate for smooth infinite loop -->
+          <span>•</span>
+          <span><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="12 7 15 10 13.5 14 10.5 14 9 10"/><line x1="12" y1="7" x2="12" y2="2"/><line x1="15" y1="10" x2="19.5" y2="8.5"/><line x1="13.5" y1="14" x2="17" y2="18.5"/><line x1="10.5" y1="14" x2="7" y2="18.5"/><line x1="9" y1="10" x2="4.5" y2="8.5"/></svg> Real Madrid 2 - 1 Man City (74')</span>
+          <span>•</span>
+          <span><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg> Aviator crashed at 14.82x</span>
+        </div>
       </div>
     </div>
 
@@ -154,23 +165,27 @@
 
       <!-- TAB 1: SPORTS & LIVE BETTING -->
       <section class="tab-content active" id="tabSports">
-        <!-- Sports Filter Row -->
+        <!-- Sports Filter Row (Proper SVG icons, no emoji, added Mobile Legends MLBB) -->
         <div class="sub-filter-row">
           <button class="filter-chip active" data-sport="all" onclick="filterSport('all')">
-            <svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><path d="M12 2c1 3 3 5 5 7a7 7 0 1 1-10 0c2-2 4-4 5-7z"/></svg>
+            <svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="3" y="14" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="currentColor"/></svg>
             <span>All Sports</span>
           </button>
           <button class="filter-chip" data-sport="football" onclick="filterSport('football')">
-            <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20M2 12h20"/></svg>
+            <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="12 7 15 10 13.5 14 10.5 14 9 10"/><line x1="12" y1="7" x2="12" y2="2"/><line x1="15" y1="10" x2="19.5" y2="8.5"/><line x1="13.5" y1="14" x2="17" y2="18.5"/><line x1="10.5" y1="14" x2="7" y2="18.5"/><line x1="9" y1="10" x2="4.5" y2="8.5"/></svg>
             <span>Football</span>
           </button>
           <button class="filter-chip" data-sport="basketball" onclick="filterSport('basketball')">
-            <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+            <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/><path d="M4.93 4.93a10 10 0 0 1 14.14 0M4.93 19.07a10 10 0 0 0 14.14 0"/></svg>
             <span>Basketball</span>
           </button>
           <button class="filter-chip" data-sport="tennis" onclick="filterSport('tennis')">
-            <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+            <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M5.5 5.5a10 10 0 0 1 0 13M18.5 5.5a10 10 0 0 0 0 13"/></svg>
             <span>Tennis</span>
+          </button>
+          <button class="filter-chip" data-sport="mlbb" onclick="filterSport('mlbb')">
+            <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6 2 2-6-3-3M6 13l-3 3 2 6 6-2"/></svg>
+            <span>Mobile Legends</span>
           </button>
           <button class="filter-chip" data-sport="esports" onclick="filterSport('esports')">
             <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="4"/><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><circle cx="15" cy="11" r="1"/><circle cx="18" cy="13" r="1"/></svg>
@@ -195,12 +210,12 @@
           <button class="btn-boost-action" onclick="loadExpressOfDay()">Add Express</button>
         </div>
 
-        <!-- Authentic LiveScore App Header & Date Ribbon -->
+        <!-- Authentic LiveScore x AiScore App Header & Date Ribbon -->
         <div class="livescore-app-header">
           <div class="ls-header-top">
             <div class="ls-brand-badge">
               <span class="ls-logo-orange">Live</span><span class="ls-logo-white">Score</span>
-              <span class="ls-brand-tag">PRO</span>
+              <span class="ls-brand-tag">× AISCORE PRO</span>
             </div>
             <div class="ls-live-counter" id="liveMatchCounterBadge">
               <span class="ls-live-dot"></span> <span id="liveCounterText">LIVE NOW</span>
@@ -744,102 +759,170 @@
       </div>
     </div>
 
-    <!-- DEPOSIT MODAL (PAYLINK BANK KHQR ONLY) -->
-    <div class="modal-overlay" id="depositModal">
-      <div class="deposit-dialog">
-        <div class="dialog-header">
-          <div class="dialog-title-group">
-            <div class="dialog-title">Deposit with PayLink Bank</div>
-            <div class="dialog-subtitle">Official KHQR Instant Payment Gateway</div>
-          </div>
-          <button class="btn-close-modal" onclick="closeDepositModal()">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-
-        <div class="dialog-body">
-          <!-- STEP 1: SELECT AMOUNT -->
-          <div class="paylink-step-pane active" id="paylinkAmountStep">
-            <div class="paylink-intro-box">
-              <div class="paylink-badge">
-                <svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                <span>INSTANT KHQR GATEWAY</span>
-              </div>
-              <p>Generate a real Bakong KHQR code using PayLink Bank. Scan with ABA, ACLEDA, or any Bakong banking app for instant deposit.</p>
+    <!-- AUTHENTIC BAKONG KHQR MODAL (EXACT USER SPECIFICATION) -->
+    <div id="bakongModal" class="hidden fixed z-[9999] inset-0 w-full h-full modal-backdrop overflow-y-auto" style="display:none; position:fixed; inset:0; z-index:9999; width:100%; height:100%;">
+        <div style="padding:0; background:transparent; border:none; box-shadow:none; max-width:420px; width:92%; margin:4% auto; position:relative; z-index:10000;">
+            
+            <!-- Amount Quick Switcher -->
+            <div class="bakong-amount-bar">
+                <button type="button" class="bakong-amt-chip" onclick="setKhqrDepositAmount(10)">$10</button>
+                <button type="button" class="bakong-amt-chip active" onclick="setKhqrDepositAmount(20)">$20</button>
+                <button type="button" class="bakong-amt-chip" onclick="setKhqrDepositAmount(50)">$50</button>
+                <button type="button" class="bakong-amt-chip" onclick="setKhqrDepositAmount(100)">$100</button>
             </div>
 
-            <div class="form-group">
-              <label>Amount to Deposit ($ USD):</label>
-              <div class="amount-quick-buttons">
-                <button type="button" class="amt-btn" onclick="setDepositAmt(10)">$10</button>
-                <button type="button" class="amt-btn active" onclick="setDepositAmt(20)">$20</button>
-                <button type="button" class="amt-btn" onclick="setDepositAmt(50)">$50</button>
-                <button type="button" class="amt-btn" onclick="setDepositAmt(100)">$100</button>
-              </div>
-              <div class="input-with-symbol">
-                <span class="input-curr-symbol">$</span>
-                <input type="number" id="depositAmountInput" class="dialog-input amount-large" value="20" min="1" step="1">
-              </div>
-            </div>
+            <!-- Bakong Modal Desktop Card -->
+            <div id="bakongModalDesktop" class="hidden md:block font-['SF_Pro_Display',Battambang,Arial,sans-serif]" style="background:#ffffff; color:rgb(8,27,55); line-height:1.5; max-width:380px; margin:0 auto; border-radius:18px; padding:20px; box-shadow: 0 12px 36px rgba(0,0,0,0.4); position:relative;">
+                <div style="position:relative;">
+                    <div style="padding:0 0 16px 0; display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="font-size:20px; color:rgb(8,27,55); margin:0; font-weight:700; font-family:'Outfit',sans-serif; letter-spacing:0.5px;">BAKONG KHQR</h3>
+                        <span 
+                            class="close" 
+                            style="color:rgb(8,27,55); font-size:26px; font-weight:bold; cursor:pointer; line-height:1; transition:color 0.2s;"
+                            onclick="closeKhqrModal()"
+                        >&times;</span>
+                    </div>
+                    
+                    <div style="display:flex; justify-content:center; align-items:center;">
+                        <div class="qr-card" style="border-radius:22px; width:273px; min-height:396px; display:flex; flex-direction:column; background:#ffffff;">
+                            <div style="margin-bottom:18px;">
+                                <div style="display:flex; align-items:center; justify-content:center; background:rgb(226,26,26); border-radius:21px 21px 0 0; height:42.6px;">
+                                    <svg width="60" height="14" viewBox="0 0 60 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M39.006 5.19439V9.59764H34.5318C34.0729 9.59764 33.7288 9.2307 33.7288 8.80731V5.22264C33.7288 4.77103 34.1016 4.43231 34.5318 4.43231H38.1743C38.6619 4.40408 39.006 4.74278 39.006 5.19439Z" fill="white"/>
+                                        <path d="M59.9717 6.97176H57.7345C57.7345 4.34676 55.5548 2.20159 52.8875 2.20159C50.7651 2.20159 48.9008 3.55645 48.2699 5.53225C48.1265 6.01209 48.0404 6.49192 48.0404 6.97176V13.9718H47.9831C46.7785 13.9718 45.8033 13.0121 45.8033 11.8266V6.97176H45.832C45.832 5.05241 46.6351 3.21773 48.0691 1.89112C49.3884 0.677406 51.1093 0 52.9162 0C56.8168 0 59.9717 3.13305 59.9717 6.97176Z" fill="white"/>
+                                        <path d="M59.9999 13.9718L56.845 14L56.0706 13.2379L54.3497 11.5444L51.9692 9.20166H55.1241L59.9999 13.9718Z" fill="white"/>
+                                        <path d="M39.7517 11.7702H33.0117C32.1799 11.7702 31.5203 11.121 31.5203 10.3024V3.66936C31.5203 2.85081 32.1799 2.20159 33.0117 2.20159H39.7517C40.5834 2.20159 41.2431 2.85081 41.2431 3.66936V10.3024L43.4802 12.504V2.14515C43.4802 0.959671 42.505 0 41.3005 0H31.4629C30.2583 0 29.2832 0.959671 29.2832 2.14515V11.8266C29.2832 13.0121 30.2583 13.9718 31.4629 13.9718H41.9888L39.7517 11.7702Z" fill="white"/>
+                                        <path d="M12.3614 14H9.20656L2.60996 7.47984V14H0V0H2.60996V6.2379L8.94843 0H12.046L5.16255 6.71772L12.3614 14Z" fill="white"/>
+                                        <path d="M24.1492 0H26.7018V14H24.1492V7.93145H16.8643V14H14.3117V0H16.8643V5.84273H24.1492V0Z" fill="white"/>
+                                    </svg>
+                                </div>
+                                <div style="display:flex; justify-content:flex-end;">
+                                    <div class="red-triangle"></div>
+                                </div>
+                                <div class="dashed-line" style="padding:12px 14px 12px 36px;">
+                                    <span style="font-size:10px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">1xBet VIP Topup</span>
+                                    <div style="margin-top:2px; font-family:'Nunito Sans',sans-serif; color:#0f172a;">
+                                        <div style="display:flex; align-items:baseline; font-size:20px; font-weight:800; color:#081b37;">
+                                            <span id="khqr-amount">20.00</span>
+                                            <span style="font-size:10px; font-weight:600; margin-left:6px; color:#475569;">USD</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="display:flex; justify-content:center; align-items:center; position:relative; flex:1; padding:4px 0 12px;">
+                                <img src="https://checkout.payway.com.kh/images/usd-khqr-logo.svg" style="position:absolute; max-width:80px; opacity:0.12; pointer-events:none;" />
+                                <div id="qrCodeContainer" style="position:relative; z-index:2;">
+                                    <img id="bakongQR" src="" alt="KHQR Code" style="margin:auto; display:block; max-width:195px; width:195px; border-radius:8px;" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Live Background Polling Status -->
+                    <div class="bakong-live-poll">
+                        <span class="bakong-poll-dot"></span>
+                        <span id="bakongPollStatusText">Auto-verifying payment with Bakong...</span>
+                    </div>
 
-            <div class="form-group">
-              <label>Bonus Promo Code (Optional):</label>
-              <input type="text" id="depositPromoCode" class="dialog-input" placeholder="Enter '1XVIP' for +100%">
-            </div>
+                    <!-- Direct Bakong App Link & Download -->
+                    <div style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
+                        <a id="bakongDeepLinkBtn" href="#" class="bakong-open-btn" style="width:100%; max-width:100%; box-sizing:border-box;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                            <span>Open in Bakong App</span>
+                        </a>
+                        <button type="button" onclick="downloadKhqrImage(event)" style="background:#f1f5f9; border:none; color:#0284c7; font-weight:700; font-size:12px; padding:8px; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                            <span>Download QR Image</span>
+                        </button>
+                    </div>
 
-            <button class="btn-submit-deposit" id="btnGeneratePaylinkQR" onclick="generatePaylinkDeposit()">
-              <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="7" y="7" width="1" height="1"/><rect x="18" y="7" width="1" height="1"/><rect x="7" y="18" width="1" height="1"/></svg>
-              <span id="btnGeneratePaylinkText">Generate PayLink KHQR</span>
-            </button>
-          </div>
-
-          <!-- STEP 2: SCAN & PAY KHQR (Active after generation) -->
-          <div class="paylink-step-pane" id="paylinkQrStep" style="display: none;">
-            <div class="paylink-qr-card">
-              <div class="paylink-qr-header">
-                <div class="khqr-logo-tag">KHQR</div>
-                <div class="khqr-merchant-info">
-                  <span class="khqr-merchant-name" id="plkMerchantName">1xBet VIP</span>
-                  <span class="khqr-tran-id" id="plkTranIdDisplay">ID: PLK-89210</span>
+                    <div style="text-align:center; padding:10px 0 0; margin:0 auto; width:273px;">
+                        <p style="font-size:11.5px; color:#94a3b8; line-height:16px; margin:0;">Scan with ABA Mobile, ACLEDA, Wing, or other Mobile Banking App supporting KHQR</p>
+                    </div>
                 </div>
-              </div>
-
-              <div class="paylink-amount-callout">
-                <span class="curr-tag">USD</span>
-                <span class="callout-val" id="plkAmountDisplay">$20.00</span>
-              </div>
-
-              <div class="paylink-qr-wrapper">
-                <img id="paylinkQrImage" src="" class="paylink-qr-img" alt="Bakong KHQR Code" />
-                <div class="qr-scan-guide">Scan with ABA Mobile, ACLEDA, Wing, or Bakong</div>
-              </div>
-
-              <div class="paylink-actions-group">
-                <button class="paylink-deeplink-btn" id="btnPaylinkDeepLink" onclick="openPaylinkDeepLink()">
-                  <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                  <span>Open in Bakong App</span>
-                </button>
-
-                <button class="paylink-check-btn" id="btnCheckPayment" onclick="checkPaylinkPaymentManual()">
-                  <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                  <span id="btnCheckPaymentText">I Have Paid • Verify Now</span>
-                </button>
-
-                <button class="paylink-back-btn" onclick="resetPaylinkDepositForm()">
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                  <span>Change Amount / Cancel</span>
-                </button>
-              </div>
-
-              <div class="paylink-status-indicator">
-                <span class="status-pulse-dot"></span>
-                <span id="plkStatusText">Awaiting payment confirmation...</span>
-              </div>
             </div>
-          </div>
+            
+            <!-- Bakong Modal Mobile Bottom Sheet -->
+            <div id="bakongModalMobile" class="md:hidden font-['SF_Pro_Display',Battambang,Arial,sans-serif]" style="display:none; background:transparent; color:rgb(8,27,55); line-height:1.5; margin:0; position:fixed; bottom:0; left:0; right:0; width:100%; max-height:92vh; overflow-y:auto; z-index:10001; transform:translateY(100%); transition:transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);">
+                <div style="background:rgb(40,40,40); position:absolute; top:-100px; left:0; right:0; height:100px; z-index:-10;"></div>
+                
+                <main style="display:flex; flex-direction:column; position:relative; width:100%; min-height:400px; margin-top:0; border-radius:23px 23px 0 0; background:#ffffff; box-shadow: 0 -8px 30px rgba(0,0,0,0.5);">
+                    <header class="no-select" style="border:none; padding:0; left:0; right:0; position:relative; z-index:1000; background:rgb(226,26,26); border-radius:20px 20px 0 0; overflow:hidden;">
+                        <div id="mobileDragArea" style="padding:10px 0 4px; cursor:grab; width:100%; touch-action:pan-y; display:flex; align-items:center; justify-content:center;">
+                            <div class="draggable-thumb"></div>
+                        </div>
+                    </header>
+                    
+                    <div style="background:#ffffff; border-radius:0 0 20px 20px; padding-bottom:24px;">
+                        <div id="redHeaderDraggable" style="background:rgb(226,26,26); height:60px; display:flex; justify-content:center; align-items:flex-end; position:relative; cursor:grab; touch-action:pan-y; margin-top:-1px;">
+                            <img src="https://checkout.payway.com.kh/images/khqr-icon.svg" alt="KHQR" style="margin-bottom:12px; height:auto; max-width:80px; display:block; pointer-events:none;" />
+                            <button type="button" onclick="closeKhqrModal()" style="position:absolute; right:14px; top:8px; background:rgba(0,0,0,0.2); border:none; color:#ffffff; width:28px; height:28px; border-radius:50%; font-size:16px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+                        </div>
+                        
+                        <div style="display:flex; justify-content:flex-end;">
+                            <div class="red-triangle"></div>
+                        </div>
+                        
+                        <!-- Mobile Amount Switcher -->
+                        <div style="display:flex; justify-content:center; gap:8px; margin:6px 0 10px;">
+                            <button type="button" class="bakong-amt-chip" onclick="setKhqrDepositAmount(10)">$10</button>
+                            <button type="button" class="bakong-amt-chip active" onclick="setKhqrDepositAmount(20)">$20</button>
+                            <button type="button" class="bakong-amt-chip" onclick="setKhqrDepositAmount(50)">$50</button>
+                            <button type="button" class="bakong-amt-chip" onclick="setKhqrDepositAmount(100)">$100</button>
+                        </div>
 
+                        <div>
+                            <div style="display:flex; justify-content:center; align-items:center;">
+                                <div style="width:220px; text-align:center;">
+                                    <span style="font-size:10px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">1xBet VIP Topup</span>
+                                    <div style="margin-top:2px;">
+                                        <div style="font-size:26px; font-weight:800; color:rgb(8,27,55); display:flex; align-items:baseline; justify-content:center;">
+                                            <span id="khqr-amount-mobile">20.00</span>
+                                            <span style="font-size:12px; font-weight:600; margin-left:6px; color:#475569;">USD</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="background-image:url('https://checkout.payway.com.kh/images/line-divider.svg'); height:1px; margin:14px 0; width:100%; background-repeat:no-repeat; background-position:center;"></div>
+                        
+                        <div style="display:flex; justify-content:center; align-items:center; margin-top:4px; position:relative;">
+                            <img src="https://checkout.payway.com.kh/images/usd-khqr-logo.svg" style="position:absolute; height:auto; max-width:90px; display:block; opacity:0.1; pointer-events:none;" />
+                            <div id="qrCodeContainerMobile" style="position:relative; z-index:2;">
+                                <img id="bakongQR-mobile" src="" alt="QR Code" style="margin:auto; position:relative; height:auto; max-width:240px; width:220px; display:block; border-radius:8px;" />
+                            </div>
+                        </div>
+
+                        <!-- Live Polling Indicator -->
+                        <div class="bakong-live-poll" style="margin-top:12px;">
+                            <span class="bakong-poll-dot"></span>
+                            <span id="bakongPollStatusTextMobile">Auto-verifying payment with Bakong...</span>
+                        </div>
+                        
+                        <div style="margin:14px 20px 0; text-align:center;">
+                            <a id="bakongDeepLinkBtnMobile" href="#" class="bakong-open-btn" style="margin-bottom:10px; width:100%; max-width:100%; box-sizing:border-box;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                <span>Open in Bakong App</span>
+                            </a>
+                            <p style="font-size:13px; font-weight:700; margin:0; color:rgb(8,27,55);">Scan to Pay</p>
+                            <p style="margin:2px 0; color:#94a3b8; font-size:12px;">or</p>
+                            <div style="margin-top:4px;">
+                                <a id="downloadQRMobile" href="#" onclick="downloadKhqrImage(event)" style="background:#f1f5f9; padding:8px 16px; border-radius:10px; display:inline-flex; justify-content:center; align-items:center; color:rgb(8,27,55); text-decoration:none; gap:6px;">
+                                    <img src="https://checkout.payway.com.kh/images/download-icon-khqr.svg" style="height:16px; display:block;" />
+                                    <span style="color:#0284c7; font-weight:600; font-size:12px;">Download QR</span>
+                                </a>
+                            </div>
+                            <div style="display:flex; justify-content:center; align-items:center; margin-top:8px;">
+                                <p style="font-size:11.5px; color:#94a3b8; line-height:16px; max-width:240px; margin:0;">and upload to Mobile Banking app supporting KHQR</p>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+            
         </div>
-      </div>
     </div>
 
     <!-- WITHDRAW MODAL -->

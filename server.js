@@ -221,6 +221,116 @@ async function fetchFromLiveScore() {
   return matches;
 }
 
+let cachedMlbbMatches = [];
+let lastMlbbFetch = 0;
+
+async function fetchMobileLegendsMatches() {
+  const now = Date.now();
+  if (cachedMlbbMatches.length > 0 && (now - lastMlbbFetch < 60000)) {
+    return cachedMlbbMatches;
+  }
+
+  try {
+    const res = await fetch('https://liquipedia.net/mobilelegends/api.php?action=parse&page=Liquipedia:Matches&prop=text&format=json', {
+      headers: { 'User-Agent': '1xBetMiniApp/1.0 (contact@1xbet.com)' }
+    });
+    if (!res.ok) return cachedMlbbMatches;
+    const data = await res.json();
+    const html = data?.parse?.text?.['*'] || '';
+    const matchBlocks = html.split('<div class="match-info">').slice(1);
+
+    const matches = [];
+
+    for (let i = 0; i < matchBlocks.length; i++) {
+      const block = matchBlocks[i];
+      const opponentSplits = block.split('class="match-info-header-opponent');
+      if (opponentSplits.length < 3) continue;
+
+      const leftPart = opponentSplits[1];
+      const rightPart = opponentSplits[2];
+
+      const leftTitleMatch = leftPart.match(/<a[^>]+title="([^"]+)"/);
+      const rightTitleMatch = rightPart.match(/<a[^>]+title="([^"]+)"/);
+
+      const leftImgMatch = leftPart.match(/<img[^>]+src="([^"]+)"/);
+      const rightImgMatch = rightPart.match(/<img[^>]+src="([^"]+)"/);
+
+      const scoreMatch = block.match(/class="match-info-header-scoreholder-score">(\d+)<\/span>[\s\S]*?class="match-info-header-scoreholder-score">(\d+)<\/span>/);
+      const tourMatch = block.match(/class="match-info-tournament"[\s\S]*?<a[^>]+title="([^"]+)"/);
+      const timeMatch = block.match(/data-timestamp="(\d+)"/);
+
+      if (leftTitleMatch && rightTitleMatch) {
+        const homeTeam = leftTitleMatch[1].replace(/ \(page does not exist\)/g, '').replace(/_/g, ' ').trim();
+        const awayTeam = rightTitleMatch[1].replace(/ \(page does not exist\)/g, '').replace(/_/g, ' ').trim();
+
+        const homeLogo = leftImgMatch ? (leftImgMatch[1].startsWith('http') ? leftImgMatch[1] : 'https://liquipedia.net' + leftImgMatch[1]) : '';
+        const awayLogo = rightImgMatch ? (rightImgMatch[1].startsWith('http') ? rightImgMatch[1] : 'https://liquipedia.net' + rightImgMatch[1]) : '';
+
+        let tournament = 'MPL Professional League';
+        if (tourMatch) {
+          tournament = tourMatch[1]
+            .replace(/ \(page does not exist\)/g, '')
+            .replace(/#.*$/, '')
+            .replace(/\//g, ' • ')
+            .replace(/_/g, ' ')
+            .trim();
+        }
+
+        const timestamp = timeMatch ? parseInt(timeMatch[1]) * 1000 : Date.now();
+        const matchDate = new Date(timestamp);
+        const isLive = Math.abs(now - timestamp) < 2.5 * 3600 * 1000 && now >= timestamp;
+        const isFinished = now > (timestamp + 2.5 * 3600 * 1000) && Boolean(scoreMatch);
+
+        const homeScore = scoreMatch ? parseInt(scoreMatch[1]) : (isLive ? 1 : null);
+        const awayScore = scoreMatch ? parseInt(scoreMatch[2]) : (isLive ? 0 : null);
+
+        let day = 'Today';
+        const todayDate = new Date();
+        if (matchDate.getDate() === todayDate.getDate() + 1) {
+          day = 'Tomorrow';
+        } else if (matchDate > todayDate) {
+          day = 'Upcoming';
+        }
+
+        matches.push({
+          id: `mlbb_${i + 1}`,
+          sport: 'mlbb',
+          sportSub: 'esports',
+          sportName: 'Mobile Legends (MLBB)',
+          homeTeam,
+          awayTeam,
+          homeLogo,
+          awayLogo,
+          homeScore,
+          awayScore,
+          rawLeague: tournament,
+          league: tournament,
+          country: 'MLBB Esports',
+          isLive,
+          isFinished,
+          isTop: true,
+          day,
+          time: matchDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          odds: {
+            home: +(1.45 + (i % 5) * 0.15).toFixed(2),
+            draw: 0,
+            away: +(2.10 + (i % 4) * 0.25).toFixed(2)
+          }
+        });
+      }
+    }
+
+    if (matches.length > 0) {
+      cachedMlbbMatches = matches;
+      lastMlbbFetch = now;
+    }
+    return cachedMlbbMatches;
+  } catch (err) {
+    console.warn('MLBB API fetch error:', err.message);
+    return cachedMlbbMatches;
+  }
+}
+
 async function fetchRealLiveMatches() {
   const now = Date.now();
   if (cachedMatches.length > 0 && (now - lastMatchesFetch < 15000)) {
@@ -228,14 +338,19 @@ async function fetchRealLiveMatches() {
   }
 
   try {
-    const liveScoreMatches = await fetchFromLiveScore();
-    if (liveScoreMatches && liveScoreMatches.length > 0) {
-      cachedMatches = liveScoreMatches;
+    const [liveScoreMatches, mlbbMatches] = await Promise.all([
+      fetchFromLiveScore().catch(() => []),
+      fetchMobileLegendsMatches().catch(() => [])
+    ]);
+
+    const combined = [...(liveScoreMatches || []), ...(mlbbMatches || [])];
+    if (combined.length > 0) {
+      cachedMatches = combined;
       lastMatchesFetch = now;
       return cachedMatches;
     }
   } catch (err) {
-    console.warn('LiveScore API fetch failed, falling back:', err.message);
+    console.warn('LiveScore & AiScore API fetch failed, falling back:', err.message);
   }
 
   return cachedMatches;
