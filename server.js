@@ -46,91 +46,109 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-// Dynamic Real-Time Sports Matches & Odds Cache
+// Dynamic Real-Time Sports Matches & Odds Cache from LiveScore.com
 let cachedMatches = [];
 let lastMatchesFetch = 0;
 
-async function fetchRealLiveMatches() {
-  const now = Date.now();
-  if (cachedMatches.length > 0 && (now - lastMatchesFetch < 30000)) {
-    return cachedMatches;
-  }
+async function fetchFromLiveScore() {
+  const d = new Date();
+  const ymd = d.toISOString().slice(0, 10).replace(/-/g, '');
+  
+  const [liveRes, todayRes] = await Promise.allSettled([
+    fetch('https://prod-public-api.livescore.com/v1/api/app/live/soccer/0.00', { headers: { 'User-Agent': 'Mozilla/5.0' } }),
+    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymd}/0.00`, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+  ]);
 
-  const sources = [
-    { sport: 'football', league: 'English Premier League', icon: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard' },
-    { sport: 'football', league: 'UEFA Champions League', icon: '🏆', url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard' },
-    { sport: 'football', league: 'Spanish La Liga', icon: '🇪🇸', url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/scoreboard' },
-    { sport: 'basketball', league: 'NBA Basketball', icon: '🏀', url: 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard' },
-    { sport: 'football', league: 'Italian Serie A', icon: '🇮🇹', url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/scoreboard' }
+  const matches = [];
+  const seenIds = new Set();
+  const TOP_LEAGUES = [
+    'Premier League', 'LaLiga', 'Serie A', 'Bundesliga', 'Ligue 1',
+    'UEFA Champions League', 'UEFA Europa League', 'FA Cup', 'EFL Cup', 'Copa del Rey'
   ];
 
-  const results = [];
-  for (const s of sources) {
-    try {
-      const res = await fetch(s.url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-      const data = await res.json();
-      if (!data.events) continue;
+  function parseStages(stages, isLiveForced = false) {
+    for (const stage of stages || []) {
+      const leagueName = stage.Snm || 'Football';
+      const country = stage.Cnm || '';
+      for (const ev of stage.Events || []) {
+        if (seenIds.has(ev.Eid)) continue;
+        seenIds.add(ev.Eid);
 
-      for (const e of data.events.slice(0, 5)) {
-        const comp = e.competitions?.[0];
-        if (!comp) continue;
-        const homeComp = comp.competitors?.find(c => c.homeAway === 'home');
-        const awayComp = comp.competitors?.find(c => c.homeAway === 'away');
-        if (!homeComp || !awayComp) continue;
+        const homeName = ev.T1?.[0]?.Nm || 'Home';
+        const awayName = ev.T2?.[0]?.Nm || 'Away';
+        const homeImg = ev.T1?.[0]?.Img ? `https://lsm-static-prod.livescore.com/medium/${ev.T1[0].Img}` : '';
+        const awayImg = ev.T2?.[0]?.Img ? `https://lsm-static-prod.livescore.com/medium/${ev.T2[0].Img}` : '';
+        const timeDisplay = ev.Eps || 'VS';
+        const isLive = isLiveForced || ['1H', '2H', 'HT', 'ET', 'P', 'BT'].includes(ev.Eps) || (typeof ev.Eps === 'string' && ev.Eps.includes("'"));
+        const isTop = TOP_LEAGUES.some(l => leagueName.toLowerCase().includes(l.toLowerCase()));
 
-        const isLive = e.status?.type?.state === 'in';
-        const isPre = e.status?.type?.state === 'pre';
-        const isPost = e.status?.type?.state === 'post';
-        const timeDisplay = isLive 
-          ? (e.status?.displayClock || 'LIVE') 
-          : (isPre ? new Date(e.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (e.status?.type?.detail || 'FT'));
-
-        results.push({
-          id: 'espn_' + e.id,
-          sport: s.sport,
-          league: s.league,
-          leagueIcon: s.icon,
-          isLive: isLive,
+        matches.push({
+          id: 'ls_' + ev.Eid,
+          sport: 'football',
+          league: country ? `${country} - ${leagueName}` : leagueName,
+          leagueIcon: '⚽',
+          isLive,
+          isTop,
           time: timeDisplay,
-          homeTeam: homeComp.team?.name || 'Home',
-          homeLogo: homeComp.team?.logo || '',
-          homeScore: isPre ? null : parseInt(homeComp.score || 0),
-          awayTeam: awayComp.team?.name || 'Away',
-          awayLogo: awayComp.team?.logo || '',
-          awayScore: isPre ? null : parseInt(awayComp.score || 0),
+          homeTeam: homeName,
+          homeLogo: homeImg,
+          homeScore: ev.Tr1 !== undefined ? parseInt(ev.Tr1) : null,
+          awayTeam: awayName,
+          awayLogo: awayImg,
+          awayScore: ev.Tr2 !== undefined ? parseInt(ev.Tr2) : null,
           odds: {
-            home: +(1.60 + Math.random() * 1.5).toFixed(2),
-            draw: s.sport === 'football' ? +(3.00 + Math.random() * 1.2).toFixed(2) : 0,
-            away: +(1.90 + Math.random() * 2.2).toFixed(2),
+            home: +(1.45 + Math.random() * 1.5).toFixed(2),
+            draw: +(3.10 + Math.random() * 1.2).toFixed(2),
+            away: +(1.85 + Math.random() * 2.2).toFixed(2),
             over25: +(1.65 + Math.random() * 0.4).toFixed(2),
             under25: +(1.90 + Math.random() * 0.5).toFixed(2)
           }
         });
       }
-    } catch (err) {
-      console.warn('Error fetching league ' + s.league + ':', err.message);
     }
   }
 
-  // If no match has isLive === true right now (e.g. between matches), mark the first 3 featured games as isLive
-  // with simulated in-play clock so users always have live games to watch and bet on 24/7
-  const hasLive = results.some(r => r.isLive);
-  if (!hasLive && results.length > 0) {
-    for (let i = 0; i < Math.min(3, results.length); i++) {
-      results[i].isLive = true;
-      results[i].time = `${32 + i * 19}'`;
-      if (results[i].homeScore === null) results[i].homeScore = 1;
-      if (results[i].awayScore === null) results[i].awayScore = i % 2 === 0 ? 0 : 1;
+  if (liveRes.status === 'fulfilled' && liveRes.value.ok) {
+    try {
+      const liveData = await liveRes.value.json();
+      parseStages(liveData.Stages, true);
+    } catch (_) {}
+  }
+
+  if (todayRes.status === 'fulfilled' && todayRes.value.ok) {
+    try {
+      const todayData = await todayRes.value.json();
+      parseStages(todayData.Stages, false);
+    } catch (_) {}
+  }
+
+  // Sort: Live matches first, then Top European leagues, then others
+  matches.sort((a, b) => {
+    if (a.isLive !== b.isLive) return b.isLive ? 1 : -1;
+    if (a.isTop !== b.isTop) return b.isTop ? 1 : -1;
+    return 0;
+  });
+
+  return matches;
+}
+
+async function fetchRealLiveMatches() {
+  const now = Date.now();
+  if (cachedMatches.length > 0 && (now - lastMatchesFetch < 15000)) {
+    return cachedMatches;
+  }
+
+  try {
+    const liveScoreMatches = await fetchFromLiveScore();
+    if (liveScoreMatches && liveScoreMatches.length > 0) {
+      cachedMatches = liveScoreMatches;
+      lastMatchesFetch = now;
+      return cachedMatches;
     }
+  } catch (err) {
+    console.warn('LiveScore API fetch failed, falling back:', err.message);
   }
 
-  // Sort so live matches are always at the top of the odds list
-  results.sort((a, b) => (b.isLive ? 1 : 0) - (a.isLive ? 1 : 0));
-
-  if (results.length > 0) {
-    cachedMatches = results;
-    lastMatchesFetch = now;
-  }
   return cachedMatches;
 }
 
@@ -372,10 +390,13 @@ Get a *200% First Deposit Match Bonus* on your first transfer!
         });
         console.log(`✅ Telegram Chat Menu Button updated with URL: ${url}`);
       } catch (err) {
-        console.warn('Could not set menu button:', err.message);
       }
     };
 
+    // Auto-update Telegram Menu Button if public URL is already set (e.g. Render)
+    if (WEBAPP_URL) {
+      bot.updateMenuButtonUrl(WEBAPP_URL);
+    }
   } catch (err) {
     console.error(`Telegram Bot initialization error:`, err.message);
   }

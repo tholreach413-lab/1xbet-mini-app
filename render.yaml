@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: 1xbet-mini-app
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: BOT_TOKEN
+        sync: false
+      - key: BOT_USERNAME
+        sync: false
+      - key: ADMIN_IDS
+        sync: false
+      - key: GROUP_ID
+        sync: false
+      - key: PAYLINK_BASE_URL
+        sync: false
+      - key: PAYLINK_API_KEY
+        sync: false
+      - key: PAYLINK_SECRET
+        sync: false
+      - key: MERCHANT_NAME
+        sync: false
