@@ -9,7 +9,7 @@
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:ital,wght@0,500;0,600;0,700;0,800;0,900;1,700;1,800;1,900&display=swap" rel="stylesheet">
   <!-- Stylesheet -->
   <link rel="stylesheet" href="style.css">
 </head>
@@ -19,7 +19,7 @@
     <header class="app-header">
       <div class="header-left">
         <div class="brand-logo" id="brandLogo">
-          <span class="logo-1x">1x</span><span class="logo-bet">BET</span>
+          <span class="logo-1x">1X</span><span class="logo-bet">BET</span>
         </div>
         <div class="vip-badge" id="vipBadge">
           <span class="vip-icon">★</span>
@@ -184,6 +184,9 @@
             </button>
             <button class="ls-ribbon-btn" data-filter="tomorrow" onclick="setLiveScoreFilter('tomorrow')">
               <span>Tomorrow</span>
+            </button>
+            <button class="ls-ribbon-btn" data-filter="upcoming" onclick="setLiveScoreFilter('upcoming')">
+              <span>Upcoming</span>
             </button>
           </div>
 

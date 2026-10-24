@@ -219,6 +219,86 @@ function loadMoreMatches() {
   renderMatches();
 }
 
+// --- FOOTBALL SEARCH NORMALIZER & ALIAS DICTIONARY ---
+const FOOTBALL_ALIASES = {
+  'psg': 'paris saint germain',
+  'paris': 'paris',
+  'barca': 'barcelona',
+  'barça': 'barcelona',
+  'real': 'real madrid',
+  'madrid': 'madrid',
+  'man utd': 'manchester united',
+  'man united': 'manchester united',
+  'man u': 'manchester united',
+  'man city': 'manchester city',
+  'city': 'manchester city',
+  'spurs': 'tottenham',
+  'tottenham': 'tottenham',
+  'arsenal': 'arsenal',
+  'gunners': 'arsenal',
+  'chelsea': 'chelsea',
+  'blues': 'chelsea',
+  'liverpool': 'liverpool',
+  'reds': 'liverpool',
+  'bayern': 'bayern munich',
+  'bvb': 'borussia dortmund',
+  'dortmund': 'borussia dortmund',
+  'juve': 'juventus',
+  'juventus': 'juventus',
+  'inter': 'inter',
+  'milan': 'milan',
+  'ac milan': 'ac milan',
+  'atleti': 'atletico madrid',
+  'atletico': 'atletico madrid',
+  'wolves': 'wolverhampton',
+  'roma': 'as roma',
+  'napoli': 'napoli'
+};
+
+function normalizeFootballText(str) {
+  return (str || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[-_.,\/#!$%\^&\*;:{}=\`~()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function matchSearchQuery(m, rawQuery) {
+  const normQ = normalizeFootballText(rawQuery);
+  if (!normQ) return true;
+
+  const target = normalizeFootballText([
+    m.homeTeam,
+    m.awayTeam,
+    m.league,
+    m.country,
+    m.rawLeague
+  ].join(' '));
+
+  // Direct substring check
+  if (target.includes(normQ)) return true;
+
+  // Check alias expansion
+  const expanded = FOOTBALL_ALIASES[normQ];
+  if (expanded && target.includes(expanded)) return true;
+
+  // Token matching: all tokens in query must match
+  const tokens = normQ.split(' ').filter(Boolean);
+  if (tokens.length > 1) {
+    const allTokensMatch = tokens.every(token => target.includes(token));
+    if (allTokensMatch) return true;
+  }
+
+  // Token check for expanded query
+  if (expanded) {
+    const expTokens = expanded.split(' ').filter(Boolean);
+    if (expTokens.every(token => target.includes(token))) return true;
+  }
+
+  return false;
+}
+
 function getTeamAvatarFallback(name) {
   const safeName = (name || 'FC').trim();
   const parts = safeName.split(' ').filter(Boolean);
@@ -251,19 +331,13 @@ function renderMatches() {
   const counterTxt = document.getElementById('liveCounterText');
   if (counterTxt) counterTxt.textContent = `${liveCount} LIVE NOW`;
 
-  // Filter logic: If searching, search across ALL 1,000+ matches globally!
+  // Filter logic: If searching, search across ALL 2,500+ matches globally!
   let filtered = [];
-  const searchQuery = (STATE.matchSearchQuery || '').trim().toLowerCase();
+  const searchQuery = (STATE.matchSearchQuery || '').trim();
   const isSearching = Boolean(searchQuery);
 
   if (isSearching) {
-    filtered = matches.filter(m => 
-      (m.homeTeam && m.homeTeam.toLowerCase().includes(searchQuery)) ||
-      (m.awayTeam && m.awayTeam.toLowerCase().includes(searchQuery)) ||
-      (m.league && m.league.toLowerCase().includes(searchQuery)) ||
-      (m.country && m.country.toLowerCase().includes(searchQuery)) ||
-      (m.rawLeague && m.rawLeague.toLowerCase().includes(searchQuery))
-    );
+    filtered = matches.filter(m => matchSearchQuery(m, searchQuery));
   } else {
     // Sport filter
     filtered = STATE.currentSportFilter === 'all'
@@ -280,6 +354,8 @@ function renderMatches() {
       filtered = filtered.filter(m => m.day === 'Today' || m.isLive);
     } else if (lsFilter === 'tomorrow') {
       filtered = filtered.filter(m => m.day === 'Tomorrow');
+    } else if (lsFilter === 'upcoming') {
+      filtered = filtered.filter(m => m.day === 'Upcoming' || (m.day !== 'Today' && m.day !== 'Tomorrow' && m.day !== 'Yesterday' && !m.isLive && !m.isFinished));
     }
   }
 
@@ -320,10 +396,50 @@ function renderMatches() {
     container.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">🔍</div>
-        <div>No matches found for "${STATE.matchSearchQuery}". Try another team name!</div>
+        <div>No matches found for "${STATE.matchSearchQuery}". Try another team name like "Paris", "Barcelona", or "Real Madrid"!</div>
       </div>
     `;
     return;
+  }
+
+  // LiveScore Search Header (Shows matched teams and result stats like LiveScore)
+  let searchHeaderHTML = '';
+  if (isSearching) {
+    const matchingTeams = new Map();
+    for (const m of filtered) {
+      const qNorm = normalizeFootballText(searchQuery);
+      if (normalizeFootballText(m.homeTeam).includes(qNorm)) {
+        if (!matchingTeams.has(m.homeTeam)) {
+          matchingTeams.set(m.homeTeam, { name: m.homeTeam, logo: m.homeLogo, country: m.country });
+        }
+      }
+      if (normalizeFootballText(m.awayTeam).includes(qNorm)) {
+        if (!matchingTeams.has(m.awayTeam)) {
+          matchingTeams.set(m.awayTeam, { name: m.awayTeam, logo: m.awayLogo, country: m.country });
+        }
+      }
+    }
+
+    searchHeaderHTML = `
+      <div class="ls-search-results-banner">
+        <div class="ls-search-results-count">
+          <span>Results for <strong>"${STATE.matchSearchQuery}"</strong></span>
+          <span class="ls-badge-count">${filtered.length} matches</span>
+        </div>
+        ${matchingTeams.size > 0 ? `
+          <div class="ls-matched-teams-strip">
+            <span class="ls-matched-label">TEAMS:</span>
+            ${Array.from(matchingTeams.values()).slice(0, 4).map(t => `
+              <div class="ls-matched-team-pill" onclick="onMatchSearchInput('${t.name.replace(/'/g, "\\'")}')">
+                ${t.logo ? `<img src="${t.logo}" class="ls-pill-crest" alt="${t.name}">` : ''}
+                <span>${t.name}</span>
+                ${t.country ? `<small>(${t.country})</small>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
   }
 
   // 3. Group Matches by League (Authentic LiveScore App Layout)
@@ -341,7 +457,7 @@ function renderMatches() {
     leaguesMap.get(leagueKey).matches.push(m);
   }
 
-  let html = '';
+  let html = searchHeaderHTML;
   for (const [leagueKey, group] of leaguesMap.entries()) {
     html += `
       <div class="ls-league-card">
@@ -434,15 +550,36 @@ function generateMatchCardHTML(m) {
     ? `<img src="${m.awayLogo}" class="ls-crest" alt="${m.awayTeam}" loading="lazy" onerror="this.outerHTML='${fallbackAway}'">` 
     : getTeamAvatarFallback(m.awayTeam);
 
-  // LiveScore time & score pill
-  const liveScoreTimeHTML = m.isLive 
-    ? `<div class="ls-score-cell live">
-         <span class="ls-live-clock"><span class="pulsing-dot-orange"></span> ${m.time}</span>
-         <span class="ls-score-digits">${m.homeScore ?? 0} - ${m.awayScore ?? 0}</span>
-       </div>`
-    : `<div class="ls-score-cell upcoming">
-         <span class="ls-match-time">${m.day === 'Tomorrow' ? 'Tmr ' : ''}${m.time}</span>
-       </div>`;
+  // LiveScore time & score pill (Exact LiveScore formatting)
+  let liveScoreTimeHTML = '';
+  if (m.isLive) {
+    liveScoreTimeHTML = `
+      <div class="ls-score-cell live">
+        <span class="ls-live-clock"><span class="pulsing-dot-orange"></span> ${m.time}</span>
+        <span class="ls-score-digits">${m.homeScore ?? 0} - ${m.awayScore ?? 0}</span>
+      </div>`;
+  } else if (m.isFinished) {
+    liveScoreTimeHTML = `
+      <div class="ls-score-cell finished">
+        <span class="ls-match-status ft">FT</span>
+        <span class="ls-score-digits ft">${m.homeScore ?? 0} - ${m.awayScore ?? 0}</span>
+      </div>`;
+  } else {
+    // Upcoming match: show real kickoff time (e.g. 02:30, 21:00) with date tag!
+    let subDate = '';
+    if (m.day === 'Tomorrow') {
+      subDate = 'Tmr';
+    } else if (m.dateStr) {
+      subDate = m.dateStr;
+    } else if (m.day && m.day !== 'Today') {
+      subDate = m.day;
+    }
+    liveScoreTimeHTML = `
+      <div class="ls-score-cell upcoming">
+        <span class="ls-match-time">${m.time}</span>
+        ${subDate ? `<span class="ls-match-subdate">${subDate}</span>` : ''}
+      </div>`;
+  }
 
   return `
     <div class="ls-match-row ${m.isLive ? 'is-live-row' : ''}" id="card_${m.id}">

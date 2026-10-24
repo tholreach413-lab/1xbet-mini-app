@@ -53,8 +53,6 @@ let lastMatchesFetch = 0;
 async function fetchFromLiveScore() {
   const tzOffset = 7 * 60 * 60 * 1000;
   const localNow = new Date(Date.now() + tzOffset);
-  const dToday = localNow;
-  const dTomorrow = new Date(localNow.getTime() + 24 * 60 * 60 * 1000);
   
   const formatYMD = (d) => {
     const y = d.getUTCFullYear();
@@ -63,13 +61,26 @@ async function fetchFromLiveScore() {
     return `${y}${m}${day}`;
   };
 
+  const dYesterday = new Date(localNow.getTime() - 86400000);
+  const dToday = localNow;
+  const dTomorrow = new Date(localNow.getTime() + 86400000);
+  const dPlus2 = new Date(localNow.getTime() + 2 * 86400000);
+  const dPlus3 = new Date(localNow.getTime() + 3 * 86400000);
+
+  const ymdYesterday = formatYMD(dYesterday);
   const ymdToday = formatYMD(dToday);
   const ymdTomorrow = formatYMD(dTomorrow);
-  
-  const [liveRes, todayRes, tomorrowRes] = await Promise.allSettled([
-    fetch('https://prod-public-api.livescore.com/v1/api/app/live/soccer/0.00', { headers: { 'User-Agent': 'Mozilla/5.0' } }),
-    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymdToday}/7.00`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
-    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymdTomorrow}/7.00`, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+  const ymdPlus2 = formatYMD(dPlus2);
+  const ymdPlus3 = formatYMD(dPlus3);
+
+  const headers = { 'User-Agent': 'Mozilla/5.0' };
+  const [liveRes, yestRes, todayRes, tomorrowRes, plus2Res, plus3Res] = await Promise.allSettled([
+    fetch('https://prod-public-api.livescore.com/v1/api/app/live/soccer/0.00', { headers }),
+    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymdYesterday}/7.00`, { headers }),
+    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymdToday}/7.00`, { headers }),
+    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymdTomorrow}/7.00`, { headers }),
+    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymdPlus2}/7.00`, { headers }),
+    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymdPlus3}/7.00`, { headers })
   ]);
 
   const matches = [];
@@ -79,7 +90,7 @@ async function fetchFromLiveScore() {
     'UEFA Champions League', 'UEFA Europa League', 'Coupe de France', 'FA Cup', 'EFL Cup', 'Copa del Rey'
   ];
 
-  function parseStages(stages, isLiveForced = false, dayLabel = 'Today') {
+  function parseStages(stages, isLiveForced = false, dayLabel = 'Today', fallbackDate = '') {
     for (const stage of stages || []) {
       const rawLeague = stage.Snm || 'Football';
       const country = stage.Cnm || '';
@@ -91,9 +102,36 @@ async function fetchFromLiveScore() {
         const awayName = ev.T2?.[0]?.Nm || 'Away';
         const homeImg = ev.T1?.[0]?.Img ? `https://lsm-static-prod.livescore.com/medium/${ev.T1[0].Img}` : '';
         const awayImg = ev.T2?.[0]?.Img ? `https://lsm-static-prod.livescore.com/medium/${ev.T2[0].Img}` : '';
-        const timeDisplay = ev.Eps || 'VS';
+
+        // Extract real kickoff time and date from LiveScore Esd (YYYYMMDDHHMMSS)
+        const esdStr = String(ev.Esd || '');
+        let kickoffTime = '';
+        let matchDateStr = fallbackDate;
+        if (esdStr.length >= 12) {
+          const hh = esdStr.slice(8, 10);
+          const mm = esdStr.slice(10, 12);
+          kickoffTime = `${hh}:${mm}`;
+          const evMonthNum = parseInt(esdStr.slice(4, 6), 10);
+          const evDayNum = parseInt(esdStr.slice(6, 8), 10);
+          const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          matchDateStr = `${evDayNum} ${months[evMonthNum] || ''}`;
+        }
+
         const isLive = isLiveForced || ['1H', '2H', 'HT', 'ET', 'P', 'BT'].includes(ev.Eps) || (typeof ev.Eps === 'string' && ev.Eps.includes("'"));
+        const isFinished = ['FT', 'AET', 'AP'].includes(ev.Eps);
         const isTop = TOP_LEAGUES.some(l => rawLeague.toLowerCase().includes(l.toLowerCase()));
+
+        // Authentic LiveScore Time & Status formatting (Never show raw NS)
+        let timeDisplay = kickoffTime || 'VS';
+        if (isLive) {
+          timeDisplay = ev.Eps || 'LIVE';
+        } else if (isFinished) {
+          timeDisplay = 'FT';
+        } else if (ev.Eps && ev.Eps !== 'NS') {
+          timeDisplay = ev.Eps;
+        } else if (kickoffTime) {
+          timeDisplay = kickoffTime;
+        }
 
         matches.push({
           id: 'ls_' + ev.Eid,
@@ -103,9 +141,12 @@ async function fetchFromLiveScore() {
           country: country,
           leagueIcon: '⚽',
           isLive,
+          isFinished,
           isTop,
           day: isLive ? 'LIVE' : dayLabel,
+          dateStr: matchDateStr,
           time: timeDisplay,
+          kickoffTime: kickoffTime || timeDisplay,
           homeTeam: homeName,
           homeLogo: homeImg,
           homeScore: ev.Tr1 !== undefined ? parseInt(ev.Tr1) : null,
@@ -122,6 +163,7 @@ async function fetchFromLiveScore() {
     }
   }
 
+  // 1. Live In-Play
   if (liveRes.status === 'fulfilled' && liveRes.value.ok) {
     try {
       const liveData = await liveRes.value.json();
@@ -129,6 +171,7 @@ async function fetchFromLiveScore() {
     } catch (_) {}
   }
 
+  // 2. Today's Matches
   if (todayRes.status === 'fulfilled' && todayRes.value.ok) {
     try {
       const todayData = await todayRes.value.json();
@@ -136,10 +179,35 @@ async function fetchFromLiveScore() {
     } catch (_) {}
   }
 
+  // 3. Tomorrow's Matches
   if (tomorrowRes.status === 'fulfilled' && tomorrowRes.value.ok) {
     try {
       const tomorrowData = await tomorrowRes.value.json();
       parseStages(tomorrowData.Stages, false, 'Tomorrow');
+    } catch (_) {}
+  }
+
+  // 4. Day +2 (e.g. 27 Oct - Paris Saint-Germain vs Lyon)
+  if (plus2Res.status === 'fulfilled' && plus2Res.value.ok) {
+    try {
+      const plus2Data = await plus2Res.value.json();
+      parseStages(plus2Data.Stages, false, 'Upcoming');
+    } catch (_) {}
+  }
+
+  // 5. Day +3 (e.g. 28 Oct)
+  if (plus3Res.status === 'fulfilled' && plus3Res.value.ok) {
+    try {
+      const plus3Data = await plus3Res.value.json();
+      parseStages(plus3Data.Stages, false, 'Upcoming');
+    } catch (_) {}
+  }
+
+  // 6. Yesterday's Results
+  if (yestRes.status === 'fulfilled' && yestRes.value.ok) {
+    try {
+      const yestData = await yestRes.value.json();
+      parseStages(yestData.Stages, false, 'Yesterday');
     } catch (_) {}
   }
 
