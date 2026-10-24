@@ -248,9 +248,9 @@ function filterSport(sport) {
 function setLiveScoreFilter(filter) {
   triggerHaptic('selection');
   STATE.liveScoreFilter = filter;
-  STATE.showAllMatches = false; // Reset view all on filter switch
+  STATE.visibleMatchCount = 10; // Reset pagination to initial 10 matches on filter switch
 
-  document.querySelectorAll('.ls-filter-btn').forEach(btn => {
+  document.querySelectorAll('.ls-ribbon-btn').forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-filter') === filter);
   });
 
@@ -259,6 +259,7 @@ function setLiveScoreFilter(filter) {
 
 function onMatchSearchInput(val) {
   STATE.matchSearchQuery = (val || '').trim().toLowerCase();
+  STATE.visibleMatchCount = 10;
   const clearBtn = document.getElementById('btnClearSearch');
   if (clearBtn) clearBtn.style.display = STATE.matchSearchQuery ? 'inline-block' : 'none';
   renderMatches();
@@ -268,14 +269,15 @@ function clearMatchSearch() {
   const input = document.getElementById('matchLiveSearchInput');
   if (input) input.value = '';
   STATE.matchSearchQuery = '';
+  STATE.visibleMatchCount = 10;
   const clearBtn = document.getElementById('btnClearSearch');
   if (clearBtn) clearBtn.style.display = 'none';
   renderMatches();
 }
 
-function toggleViewAllMatches() {
+function loadMoreMatches() {
   triggerHaptic('light');
-  STATE.showAllMatches = !STATE.showAllMatches;
+  STATE.visibleMatchCount = (STATE.visibleMatchCount || 10) + 10;
   renderMatches();
 }
 
@@ -288,7 +290,7 @@ function getTeamAvatarFallback(name) {
   return `<span class="team-avatar-fallback">${initials}</span>`;
 }
 
-// --- MATCH RENDERING ---
+// --- LIVESCORE MATCH RENDERING ENGINE ---
 function renderMatches() {
   const container = document.getElementById('matchesContainer');
   if (!container) return;
@@ -301,10 +303,13 @@ function renderMatches() {
         <div>Loading real-time matches from LiveScore...</div>
       </div>
     `;
-    const countBadge = document.getElementById('matchCountBadge');
-    if (countBadge) countBadge.textContent = '0 Events';
     return;
   }
+
+  // Update Top Live Counter Badge
+  const liveCount = matches.filter(m => m.isLive).length;
+  const counterTxt = document.getElementById('liveCounterText');
+  if (counterTxt) counterTxt.textContent = `${liveCount} LIVE NOW`;
 
   // 1. Sport filter
   let filtered = STATE.currentSportFilter === 'all'
@@ -334,39 +339,83 @@ function renderMatches() {
     );
   }
 
-  const countBadge = document.getElementById('matchCountBadge');
-  if (countBadge) {
-    countBadge.textContent = `${filtered.length} Matches`;
-  }
+  // 4. Smooth +10 Pagination (Never dumps 1,000 items into DOM, 0 lag!)
+  const visibleLimit = STATE.visibleMatchCount || 10;
+  const displayList = filtered.slice(0, visibleLimit);
 
-  // 4. Smooth Batching / View All (prevent DOM lag on 1000+ matches)
-  const viewAllBox = document.getElementById('viewAllBox');
-  const viewAllText = document.getElementById('btnViewAllText');
-  const BATCH_SIZE = 30;
+  // Update View More Container & Progress
+  const viewMoreBox = document.getElementById('viewMoreContainer');
+  const btnMore = document.getElementById('btnViewMoreMatches');
+  const btnMoreText = document.getElementById('btnViewMoreText');
+  const progressText = document.getElementById('matchesProgressText');
 
-  let displayList = filtered;
-  if (!STATE.showAllMatches && filtered.length > BATCH_SIZE) {
-    displayList = filtered.slice(0, BATCH_SIZE);
-    if (viewAllBox) viewAllBox.style.display = 'block';
-    if (viewAllText) viewAllText.textContent = `⚡ View All (${filtered.length} Matches)`;
-  } else if (STATE.showAllMatches && filtered.length > BATCH_SIZE) {
-    if (viewAllBox) viewAllBox.style.display = 'block';
-    if (viewAllText) viewAllText.textContent = `▲ Show Less (${BATCH_SIZE} Top Matches)`;
-  } else {
-    if (viewAllBox) viewAllBox.style.display = 'none';
+  if (viewMoreBox) {
+    if (filtered.length <= 10) {
+      viewMoreBox.style.display = 'none';
+    } else {
+      viewMoreBox.style.display = 'block';
+      if (progressText) {
+        progressText.textContent = `Showing ${displayList.length} of ${filtered.length} matches`;
+      }
+      if (displayList.length >= filtered.length) {
+        if (btnMore) btnMore.disabled = true;
+        if (btnMoreText) btnMoreText.textContent = `✓ All ${filtered.length} Matches Shown`;
+      } else {
+        if (btnMore) btnMore.disabled = false;
+        const remaining = filtered.length - displayList.length;
+        const nextBatch = Math.min(10, remaining);
+        if (btnMoreText) btnMoreText.textContent = `View More (+${nextBatch} Matches)`;
+      }
+    }
   }
 
   if (displayList.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">🔍</div>
-        <div>No matches found matching your filter. Try another tab or clear search!</div>
+        <div>No matches found. Try another tab or clear your search!</div>
       </div>
     `;
     return;
   }
 
-  container.innerHTML = displayList.map(m => generateMatchCardHTML(m)).join('');
+  // 5. Group Matches by League (Authentic LiveScore App Layout)
+  const leaguesMap = new Map();
+  for (const m of displayList) {
+    const leagueKey = m.league || 'Other Matches';
+    if (!leaguesMap.has(leagueKey)) {
+      leaguesMap.set(leagueKey, {
+        name: m.rawLeague || m.league,
+        country: m.country || '',
+        icon: m.leagueIcon || '⚽',
+        matches: []
+      });
+    }
+    leaguesMap.get(leagueKey).matches.push(m);
+  }
+
+  let html = '';
+  for (const [leagueKey, group] of leaguesMap.entries()) {
+    html += `
+      <div class="ls-league-card">
+        <div class="ls-league-header">
+          <div class="ls-league-info">
+            <span class="ls-league-flag">⚽</span>
+            <div class="ls-league-titles">
+              <span class="ls-league-name">${group.name}</span>
+              ${group.country ? `<span class="ls-league-country">${group.country}</span>` : ''}
+            </div>
+          </div>
+          <span class="ls-league-arrow">›</span>
+        </div>
+        <div class="ls-matches-list">
+          ${group.matches.map(m => generateMatchCardHTML(m)).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
 }
 
 function renderLiveMatches() {
@@ -383,7 +432,43 @@ function renderLiveMatches() {
     `;
     return;
   }
-  container.innerHTML = liveList.map(m => generateMatchCardHTML(m)).join('');
+
+  // Group by league
+  const leaguesMap = new Map();
+  for (const m of liveList) {
+    const leagueKey = m.league || 'Other Matches';
+    if (!leaguesMap.has(leagueKey)) {
+      leaguesMap.set(leagueKey, {
+        name: m.rawLeague || m.league,
+        country: m.country || '',
+        matches: []
+      });
+    }
+    leaguesMap.get(leagueKey).matches.push(m);
+  }
+
+  let html = '';
+  for (const [leagueKey, group] of leaguesMap.entries()) {
+    html += `
+      <div class="ls-league-card">
+        <div class="ls-league-header">
+          <div class="ls-league-info">
+            <span class="ls-league-flag">🔴</span>
+            <div class="ls-league-titles">
+              <span class="ls-league-name">${group.name}</span>
+              ${group.country ? `<span class="ls-league-country">${group.country}</span>` : ''}
+            </div>
+          </div>
+          <span class="ls-league-arrow">›</span>
+        </div>
+        <div class="ls-matches-list">
+          ${group.matches.map(m => generateMatchCardHTML(m)).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
 }
 
 function generateMatchCardHTML(m) {
@@ -391,80 +476,64 @@ function generateMatchCardHTML(m) {
     return STATE.betslip.selections.some(s => s.matchId === m.id && s.pickType === pickType);
   };
 
-  const statusBadge = m.isLive
-    ? `<span class="match-status-badge live"><span class="pulsing-dot"></span> LIVE ${m.time}</span>`
-    : `<span class="match-status-badge upcoming">${m.day === 'Tomorrow' ? 'Tomorrow ' : ''}🕒 ${m.time}</span>`;
-
   const fallbackHome = getTeamAvatarFallback(m.homeTeam).replace(/"/g, '&quot;');
   const fallbackAway = getTeamAvatarFallback(m.awayTeam).replace(/"/g, '&quot;');
 
   const homeLogoHTML = m.homeLogo 
-    ? `<img src="${m.homeLogo}" class="team-crest" alt="${m.homeTeam}" loading="lazy" onerror="this.outerHTML='${fallbackHome}'">` 
+    ? `<img src="${m.homeLogo}" class="ls-crest" alt="${m.homeTeam}" loading="lazy" onerror="this.outerHTML='${fallbackHome}'">` 
     : getTeamAvatarFallback(m.homeTeam);
 
   const awayLogoHTML = m.awayLogo 
-    ? `<img src="${m.awayLogo}" class="team-crest" alt="${m.awayTeam}" loading="lazy" onerror="this.outerHTML='${fallbackAway}'">` 
+    ? `<img src="${m.awayLogo}" class="ls-crest" alt="${m.awayTeam}" loading="lazy" onerror="this.outerHTML='${fallbackAway}'">` 
     : getTeamAvatarFallback(m.awayTeam);
 
+  const liveScoreTimeHTML = m.isLive 
+    ? `<div class="ls-score-cell live">
+         <span class="ls-live-clock"><span class="pulsing-dot-orange"></span> ${m.time}</span>
+         <span class="ls-score-digits">${m.homeScore ?? 0} : ${m.awayScore ?? 0}</span>
+       </div>`
+    : `<div class="ls-score-cell upcoming">
+         <span class="ls-match-time">${m.day === 'Tomorrow' ? 'Tmr ' : ''}${m.time}</span>
+         <span class="ls-match-vs">VS</span>
+       </div>`;
+
   return `
-    <div class="match-card ${m.isLive ? 'is-live-card' : ''}" id="card_${m.id}">
-      <div class="match-header-row">
-        <span class="match-league">
-          <span class="league-flag">${m.country ? '🌐' : '⚽'}</span>
-          <span class="league-name-text">${m.league}</span>
-        </span>
-        <div class="match-header-actions">
-          <button class="btn-live-stream-badge ${m.isLive ? 'is-live' : ''}" onclick="watchMatchStream('${m.id}')" title="Watch live video broadcast">
-            <span class="stream-pulse-dot"></span> 📺 Live Stream
-          </button>
-          ${statusBadge}
+    <div class="ls-match-row ${m.isLive ? 'is-live-row' : ''}" id="card_${m.id}">
+      <!-- Team vs Team Center Row (Exact LiveScore Layout) -->
+      <div class="ls-match-core">
+        <div class="ls-team-box home">
+          <span class="ls-team-name">${m.homeTeam}</span>
+          ${homeLogoHTML}
+        </div>
+        ${liveScoreTimeHTML}
+        <div class="ls-team-box away">
+          ${awayLogoHTML}
+          <span class="ls-team-name">${m.awayTeam}</span>
         </div>
       </div>
-      <div class="match-teams-box">
-        <div class="team-row">
-          <div class="team-info">
-            ${homeLogoHTML}
-            <span class="team-name-text">${m.homeTeam}</span>
-          </div>
-          ${m.homeScore !== null && m.homeScore !== undefined ? `<span class="team-score ${m.isLive ? 'score-live' : ''}">${m.homeScore}</span>` : '<span class="team-score-dash">-</span>'}
-        </div>
-        <div class="team-row">
-          <div class="team-info">
-            ${awayLogoHTML}
-            <span class="team-name-text">${m.awayTeam}</span>
-          </div>
-          ${m.awayScore !== null && m.awayScore !== undefined ? `<span class="team-score ${m.isLive ? 'score-live' : ''}">${m.awayScore}</span>` : '<span class="team-score-dash">-</span>'}
-        </div>
-      </div>
-      <div class="odds-row">
-        <button class="btn-odd ${isSelected('1') ? 'selected' : ''}" id="odd_${m.id}_1" onclick="toggleOddSelection('${m.id}', '1', 'Home (${m.homeTeam})', ${m.odds.home})">
-          <span class="odd-type">1</span>
-          <span class="odd-val" id="val_${m.id}_home">${m.odds.home.toFixed(2)}</span>
+      <!-- 1xBet Quick Betting Odds Strip -->
+      <div class="ls-odds-strip">
+        <button class="ls-odd-btn ${isSelected('1') ? 'selected' : ''}" id="odd_${m.id}_1" onclick="toggleOddSelection('${m.id}', '1', 'Home (${m.homeTeam})', ${m.odds.home})">
+          <span class="lbl">1</span>
+          <span class="val">${m.odds.home.toFixed(2)}</span>
         </button>
         ${m.odds.draw > 0 ? `
-          <button class="btn-odd ${isSelected('X') ? 'selected' : ''}" id="odd_${m.id}_X" onclick="toggleOddSelection('${m.id}', 'X', 'Draw (X)', ${m.odds.draw})">
-            <span class="odd-type">X</span>
-            <span class="odd-val" id="val_${m.id}_draw">${m.odds.draw.toFixed(2)}</span>
+          <button class="ls-odd-btn ${isSelected('X') ? 'selected' : ''}" id="odd_${m.id}_X" onclick="toggleOddSelection('${m.id}', 'X', 'Draw (X)', ${m.odds.draw})">
+            <span class="lbl">X</span>
+            <span class="val">${m.odds.draw.toFixed(2)}</span>
           </button>
         ` : `
-          <button class="btn-odd" style="opacity:0.4;cursor:not-allowed;">
-            <span class="odd-type">-</span>
-            <span class="odd-val">-</span>
+          <button class="ls-odd-btn disabled" disabled>
+            <span class="lbl">-</span>
+            <span class="val">-</span>
           </button>
         `}
-        <button class="btn-odd ${isSelected('2') ? 'selected' : ''}" id="odd_${m.id}_2" onclick="toggleOddSelection('${m.id}', '2', 'Away (${m.awayTeam})', ${m.odds.away})">
-          <span class="odd-type">2</span>
-          <span class="odd-val" id="val_${m.id}_away">${m.odds.away.toFixed(2)}</span>
+        <button class="ls-odd-btn ${isSelected('2') ? 'selected' : ''}" id="odd_${m.id}_2" onclick="toggleOddSelection('${m.id}', '2', 'Away (${m.awayTeam})', ${m.odds.away})">
+          <span class="lbl">2</span>
+          <span class="val">${m.odds.away.toFixed(2)}</span>
         </button>
-      </div>
-      <div class="odds-row secondary-odds">
-        <button class="btn-odd ${isSelected('O25') ? 'selected' : ''}" id="odd_${m.id}_O25" onclick="toggleOddSelection('${m.id}', 'O25', 'Over 2.5 Goals', ${m.odds.over25})">
-          <span class="odd-type">Over 2.5</span>
-          <span class="odd-val">${m.odds.over25.toFixed(2)}</span>
-        </button>
-        <button class="btn-odd ${isSelected('U25') ? 'selected' : ''}" id="odd_${m.id}_U25" onclick="toggleOddSelection('${m.id}', 'U25', 'Under 2.5 Goals', ${m.odds.under25})">
-          <span class="odd-type">Under 2.5</span>
-          <span class="odd-val">${m.odds.under25.toFixed(2)}</span>
+        <button class="ls-stream-btn ${m.isLive ? 'live-on' : ''}" onclick="watchMatchStream('${m.id}')" title="Watch live match stream">
+          📺 <span class="ls-stream-txt">Live</span>
         </button>
       </div>
     </div>
@@ -524,8 +593,19 @@ function toggleOddSelection(matchId, pickType, pickName, odds) {
   }
 
   updateBetslipUI();
-  renderMatches();
-  renderLiveMatches();
+  updateOddsButtonsState(matchId);
+}
+
+function updateOddsButtonsState(matchId) {
+  const cards = document.querySelectorAll(`[id="card_${matchId}"]`);
+  cards.forEach(card => {
+    card.querySelectorAll('.ls-odd-btn').forEach(b => b.classList.remove('selected'));
+    const sel = STATE.betslip.selections.find(s => s.matchId === matchId);
+    if (sel) {
+      const targetBtn = card.querySelector(`[id="odd_${matchId}_${sel.pickType}"]`);
+      if (targetBtn) targetBtn.classList.add('selected');
+    }
+  });
 }
 
 function updateBetslipUI() {

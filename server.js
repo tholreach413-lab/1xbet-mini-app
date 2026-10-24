@@ -143,7 +143,8 @@ async function fetchFromLiveScore() {
     return 0;
   });
 
-  return matches;
+  // Keep payload under 30KB so server and mobile clients load instantly with zero lag
+  return matches.slice(0, 100);
 }
 
 async function fetchRealLiveMatches() {

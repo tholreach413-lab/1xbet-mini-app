@@ -155,38 +155,58 @@
           <button class="btn-boost-action" onclick="loadExpressOfDay()">Add Express</button>
         </div>
 
-        <!-- LiveScore-Style Controls & Search Bar -->
-        <div class="livescore-toolbar">
-          <div class="livescore-filter-tabs" id="liveScoreFilterTabs">
-            <button class="ls-filter-btn active" data-filter="all" onclick="setLiveScoreFilter('all')">🔥 All</button>
-            <button class="ls-filter-btn live" data-filter="live" onclick="setLiveScoreFilter('live')">
-              <span class="pulse-dot-red"></span> Live Now
+        <!-- Authentic LiveScore App Header & Date Ribbon -->
+        <div class="livescore-app-header">
+          <div class="ls-header-top">
+            <div class="ls-brand-badge">
+              <span class="ls-logo-orange">Live</span><span class="ls-logo-white">Score</span>
+              <span class="ls-brand-tag">PRO</span>
+            </div>
+            <div class="ls-live-counter" id="liveMatchCounterBadge">
+              <span class="ls-live-dot"></span> <span id="liveCounterText">LIVE NOW</span>
+            </div>
+          </div>
+
+          <!-- LiveScore Date Ribbon -->
+          <div class="ls-date-ribbon" id="liveScoreFilterTabs">
+            <button class="ls-ribbon-btn active" data-filter="all" onclick="setLiveScoreFilter('all')">
+              <span>All Matches</span>
             </button>
-            <button class="ls-filter-btn" data-filter="top" onclick="setLiveScoreFilter('top')">⭐ Top Leagues</button>
-            <button class="ls-filter-btn" data-filter="today" onclick="setLiveScoreFilter('today')">📅 Today</button>
-            <button class="ls-filter-btn" data-filter="tomorrow" onclick="setLiveScoreFilter('tomorrow')">⏭️ Tomorrow</button>
+            <button class="ls-ribbon-btn live-btn" data-filter="live" onclick="setLiveScoreFilter('live')">
+              <span class="ls-pulse-live"></span>
+              <span>LIVE</span>
+            </button>
+            <button class="ls-ribbon-btn" data-filter="top" onclick="setLiveScoreFilter('top')">
+              <span>⭐ Top Leagues</span>
+            </button>
+            <button class="ls-ribbon-btn" data-filter="today" onclick="setLiveScoreFilter('today')">
+              <span>Today</span>
+            </button>
+            <button class="ls-ribbon-btn" data-filter="tomorrow" onclick="setLiveScoreFilter('tomorrow')">
+              <span>Tomorrow</span>
+            </button>
           </div>
-          <div class="livescore-search-wrap">
-            <input type="text" id="matchLiveSearchInput" class="livescore-search-input" placeholder="🔍 Search any club, team, or league (e.g. Arsenal, Madrid, Chelsea)..." oninput="onMatchSearchInput(this.value)">
-            <button class="btn-clear-search" id="btnClearSearch" onclick="clearMatchSearch()" style="display:none;">✕</button>
+
+          <!-- LiveScore Instant Search Bar -->
+          <div class="ls-search-container">
+            <span class="ls-search-icon">🔍</span>
+            <input type="text" id="matchLiveSearchInput" class="ls-search-input" placeholder="Search team, match, or competition..." oninput="onMatchSearchInput(this.value)">
+            <button class="ls-clear-search-btn" id="btnClearSearch" onclick="clearMatchSearch()" style="display:none;">✕</button>
           </div>
         </div>
 
-        <!-- Matches List Heading -->
-        <div class="section-heading">
-          <h3 class="heading-title" id="matchesHeading">🔴 Live & Upcoming Matches</h3>
-          <span class="heading-extra" id="matchCountBadge">Loading...</span>
-        </div>
-
+        <!-- Matches Container (Grouped by League) -->
         <div class="matches-grid" id="matchesContainer">
           <!-- Dynamically Rendered by app.js -->
         </div>
 
-        <!-- View All / Load More Action -->
-        <div class="view-all-box" id="viewAllBox">
-          <button class="btn-view-all" id="btnToggleViewAll" onclick="toggleViewAllMatches()">
-            <span id="btnViewAllText">⚡ View All Matches</span>
+        <!-- View More (+10 Matches) Smooth Pagination -->
+        <div class="view-more-container" id="viewMoreContainer">
+          <button class="btn-ls-view-more" id="btnViewMoreMatches" onclick="loadMoreMatches()">
+            <span class="btn-more-icon">➕</span>
+            <span id="btnViewMoreText">View More (+10 Matches)</span>
           </button>
+          <div class="ls-matches-counter-sub" id="matchesProgressText">Showing 10 of 48 matches</div>
         </div>
       </section>
 
