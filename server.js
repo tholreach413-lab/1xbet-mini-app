@@ -46,6 +46,47 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+// High-Speed Team Logo Proxy (Bypasses hotlinking/Referer 403 blocks for Liquipedia & official tournament crests)
+const logoCache = new Map();
+app.get('/api/logo-proxy', async (req, res) => {
+  const targetUrl = req.query.url;
+  if (!targetUrl || !targetUrl.startsWith('http')) {
+    return res.status(400).send('Invalid url');
+  }
+
+  if (logoCache.has(targetUrl)) {
+    const cached = logoCache.get(targetUrl);
+    res.setHeader('Content-Type', cached.contentType);
+    res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+    return res.send(cached.buffer);
+  }
+
+  try {
+    const upstream = await fetch(targetUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+      }
+    });
+    if (!upstream.ok) {
+      return res.status(upstream.status).send('Upstream error');
+    }
+    const contentType = upstream.headers.get('content-type') || 'image/png';
+    const arrayBuffer = await upstream.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    if (logoCache.size < 600) {
+      logoCache.set(targetUrl, { contentType, buffer });
+    }
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+    res.send(buffer);
+  } catch (err) {
+    res.status(500).send('Proxy error');
+  }
+});
+
 // Dynamic Real-Time Sports Matches & Odds Cache from LiveScore.com
 // Dynamic Real-Time Sports Matches & Odds Cache from LiveScore.com & GosuGamers
 let cachedMatches = [];
@@ -436,8 +477,11 @@ async function fetchMobileLegendsMatches() {
         const leftImgMatch = leftPart.match(/<img[^>]+src="([^"]+)"/);
         const rightImgMatch = rightPart.match(/<img[^>]+src="([^"]+)"/);
 
-        const homeLogo = leftImgMatch ? (leftImgMatch[1].startsWith('http') ? leftImgMatch[1] : 'https://liquipedia.net' + leftImgMatch[1]) : '';
-        const awayLogo = rightImgMatch ? (rightImgMatch[1].startsWith('http') ? rightImgMatch[1] : 'https://liquipedia.net' + rightImgMatch[1]) : '';
+        const rawHomeImg = leftImgMatch ? (leftImgMatch[1].startsWith('http') ? leftImgMatch[1] : 'https://liquipedia.net' + leftImgMatch[1]) : '';
+        const rawAwayImg = rightImgMatch ? (rightImgMatch[1].startsWith('http') ? rightImgMatch[1] : 'https://liquipedia.net' + rightImgMatch[1]) : '';
+
+        const homeLogo = rawHomeImg ? `/api/logo-proxy?url=${encodeURIComponent(rawHomeImg)}` : '';
+        const awayLogo = rawAwayImg ? `/api/logo-proxy?url=${encodeURIComponent(rawAwayImg)}` : '';
 
         const tourMatch = block.match(/class="match-info-tournament-name"[\s\S]*?<a[^>]*><span>([^<]+)<\/span>/)
           || block.match(/class="match-info-tournament"[\s\S]*?<a[^>]+title="([^"]+)"/);

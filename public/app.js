@@ -349,25 +349,22 @@ const FOOTBALL_ALIASES = {
   'srg': 'selangor red giants'
 };
 
+const STOP_TOKENS = new Set([
+  'sp', 'rj', 'sc', 'mg', 'rs', 'pr', 'ba', 'go', 'al', 'pe', 'ce',
+  'saf', 'ca', 'fc', 'af', 'cf', 'cd', 'sc', 'de', 'la', 'del', 'vs', 'v', 'club', 'atletico'
+]);
+
 function normalizeFootballText(str) {
   return (str || '')
     .toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[-_.,\/#!$%\^&\*;:{}=\`~()]/g, ' ')
+    .replace(/['’`"-_.,\/#!$%\^&\*;:{}=\~()]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-function matchSearchQuery(m, rawQuery) {
-  const normQ = normalizeFootballText(rawQuery);
-  if (!normQ) return true;
-
-  // If user searches for platform keywords, match all genuine sports feeds
-  if (['aiscore', 'ai score', 'livescore', 'live score', 'score', 'scores'].includes(normQ)) {
-    return true;
-  }
-
-  const target = normalizeFootballText([
+function buildSearchTarget(m) {
+  const raw = [
     m.homeTeam,
     m.awayTeam,
     m.league,
@@ -375,41 +372,85 @@ function matchSearchQuery(m, rawQuery) {
     m.rawLeague,
     m.sport,
     m.sportName,
-    m.sportSub,
-    'aiscore',
-    'livescore'
-  ].join(' '));
+    m.sportSub
+  ].join(' ');
 
-  // Direct substring check
+  let clean = normalizeFootballText(raw);
+  clean += ' ' + clean.replace(/\brb\b/g, 'red bull');
+  clean += ' ' + clean.replace(/\bw\b/g, 'women');
+  clean += ' ' + clean.replace(/\butd\b/g, 'united');
+  clean += ' ' + clean.replace(/\bca\b/g, 'club atletico');
+  clean += ' aiscore livescore';
+  return clean;
+}
+
+function matchSearchQuery(m, rawQuery) {
+  const normQ = normalizeFootballText(rawQuery);
+  if (!normQ) return true;
+
+  // Platform brand aliases
+  if (['aiscore', 'ai score', 'livescore', 'live score', 'score', 'scores'].includes(normQ)) {
+    return true;
+  }
+
+  const target = buildSearchTarget(m);
+
+  // 1. Direct substring check
   if (target.includes(normQ)) return true;
 
-  // Check alias expansion
+  // 2. Check alias dictionary
   const expanded = FOOTBALL_ALIASES[normQ];
   if (expanded && target.includes(expanded)) return true;
 
-  // Token matching: all tokens in query must match
-  const tokens = normQ.split(' ').filter(Boolean);
-  if (tokens.length > 1) {
-    const allTokensMatch = tokens.every(token => target.includes(token));
-    if (allTokensMatch) return true;
-  }
+  // 3. Significant token matching (Ignores Brazilian state codes like SP, RJ, SC and prefixes like FC, CA)
+  const allTokens = normQ.split(' ').filter(Boolean);
+  const sigTokens = allTokens.filter(t => !STOP_TOKENS.has(t) && t.length >= 3);
 
-  // Token check for expanded query
-  if (expanded) {
-    const expTokens = expanded.split(' ').filter(Boolean);
-    if (expTokens.every(token => target.includes(token))) return true;
+  if (sigTokens.length > 0) {
+    const allSigMatch = sigTokens.every(tok => target.includes(tok));
+    if (allSigMatch) return true;
+
+    if (sigTokens.length >= 2) {
+      const matchCount = sigTokens.filter(tok => target.includes(tok)).length;
+      if (matchCount >= Math.min(2, sigTokens.length)) return true;
+    }
+  } else {
+    if (allTokens.every(tok => target.includes(tok))) return true;
   }
 
   return false;
 }
 
-function getTeamAvatarFallback(name) {
-  const safeName = (name || 'FC').trim();
-  const parts = safeName.split(' ').filter(Boolean);
-  const initials = parts.length > 1 
-    ? (parts[0][0] + parts[1][0]).toUpperCase() 
-    : safeName.slice(0, 2).toUpperCase();
-  return `<span class="team-avatar-fallback">${initials}</span>`;
+function getTeamInitials(name) {
+  const clean = (name || 'FC').replace(/[^a-zA-Z0-9 ]/g, '').trim();
+  const parts = clean.split(' ').filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return clean.slice(0, 2).toUpperCase() || 'FC';
+}
+
+function onCrestError(img) {
+  img.style.display = 'none';
+  const fallback = img.nextElementSibling;
+  if (fallback) fallback.style.display = 'inline-flex';
+}
+
+function renderTeamCrest(logoUrl, teamName) {
+  const safeName = (teamName || 'FC').replace(/"/g, '&quot;');
+  const initials = getTeamInitials(teamName);
+
+  if (logoUrl) {
+    return `
+      <div class="ls-crest-wrap">
+        <img src="${logoUrl}" referrerpolicy="no-referrer" class="ls-crest" alt="${safeName}" loading="lazy" onerror="onCrestError(this)">
+        <span class="team-avatar-fallback" style="display:none;">${initials}</span>
+      </div>`;
+  }
+  return `
+    <div class="ls-crest-wrap">
+      <span class="team-avatar-fallback">${initials}</span>
+    </div>`;
 }
 
 // --- LIVESCORE MATCH RENDERING ENGINE ---
@@ -657,16 +698,8 @@ function generateMatchCardHTML(m) {
     return STATE.betslip.selections.some(s => s.matchId === m.id && s.pickType === pickType);
   };
 
-  const fallbackHome = getTeamAvatarFallback(m.homeTeam).replace(/"/g, '&quot;');
-  const fallbackAway = getTeamAvatarFallback(m.awayTeam).replace(/"/g, '&quot;');
-
-  const homeLogoHTML = m.homeLogo 
-    ? `<img src="${m.homeLogo}" class="ls-crest" alt="${m.homeTeam}" loading="lazy" onerror="this.outerHTML='${fallbackHome}'">` 
-    : getTeamAvatarFallback(m.homeTeam);
-
-  const awayLogoHTML = m.awayLogo 
-    ? `<img src="${m.awayLogo}" class="ls-crest" alt="${m.awayTeam}" loading="lazy" onerror="this.outerHTML='${fallbackAway}'">` 
-    : getTeamAvatarFallback(m.awayTeam);
+  const homeLogoHTML = renderTeamCrest(m.homeLogo, m.homeTeam);
+  const awayLogoHTML = renderTeamCrest(m.awayLogo, m.awayTeam);
 
   const isFinished = Boolean(m.isFinished || m.time === 'FT' || m.day === 'Yesterday');
   const hScore = m.homeScore !== null && m.homeScore !== undefined ? m.homeScore : null;
