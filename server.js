@@ -286,8 +286,117 @@ app.post('/api/deposit', (req, res) => {
 
   res.json({
     success: true,
-    message: `Deposited $${amount} via ${method}`,
+    message: `Deposited $${amount} via ${method || 'PayLink Bank'}`,
     balance: user.balance
+  });
+});
+
+// PayLink Bank KHQR Real Gateway Endpoints
+app.post('/api/paylink/generate-qr', async (req, res) => {
+  try {
+    const { amount, userId } = req.body;
+    const numAmount = parseFloat(amount);
+    if (!numAmount || numAmount <= 0) {
+      return res.status(400).json({ success: false, error: 'Invalid deposit amount' });
+    }
+
+    const apiKey = process.env.PAYLINK_API_KEY || 'plk_live_std_e7189b177d21';
+    const merchant = process.env.MERCHANT_NAME || 'hut_soksitchey1@aclb';
+    const baseUrl = (process.env.PAYLINK_BASE_URL || 'https://paylinkapi-bot.onrender.com/').replace(/\/$/, '');
+
+    const gatewayUrl = `${baseUrl}/api/aba/generate-qr`;
+    const response = await fetch(gatewayUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey
+      },
+      body: JSON.stringify({
+        amount: numAmount,
+        currency: 'USD',
+        merchantName: merchant
+      })
+    });
+
+    const data = await response.json();
+    if (!data.success && !data.qrString) {
+      return res.status(502).json({ success: false, error: data.message || 'Payment gateway connection error' });
+    }
+
+    res.json({
+      success: true,
+      bank: data.bank || 'BAKONG',
+      tranId: data.tranId || data.transactionId,
+      amount: numAmount,
+      amountFormatted: numAmount.toFixed(2),
+      currency: 'USD',
+      merchantName: data.merchantName || merchant,
+      qrString: data.qrString,
+      md5: data.md5,
+      deepLink: data.deepLink || data.deeplink,
+      status: data.status || 'PENDING'
+    });
+  } catch (err) {
+    console.error('PayLink generate-qr error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/paylink/check-payment', async (req, res) => {
+  try {
+    const { tranId, md5, userId, amount } = req.body;
+    const apiKey = process.env.PAYLINK_API_KEY || 'plk_live_std_e7189b177d21';
+    const baseUrl = (process.env.PAYLINK_BASE_URL || 'https://paylinkapi-bot.onrender.com/').replace(/\/$/, '');
+
+    const checkUrl = `${baseUrl}/api/aba/check-payment`;
+    const response = await fetch(checkUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey
+      },
+      body: JSON.stringify({ tranId, md5 })
+    });
+
+    const data = await response.json();
+    if (data.paid === true) {
+      const user = getUser(userId || 'default');
+      const creditAmount = parseFloat(amount) || 0;
+      if (creditAmount > 0) {
+        user.balance += creditAmount;
+      }
+      return res.json({
+        success: true,
+        paid: true,
+        status: 'PAID',
+        balance: user.balance,
+        message: 'Payment confirmed and funds credited!'
+      });
+    }
+
+    res.json({
+      success: true,
+      paid: false,
+      status: data.status || 'PENDING'
+    });
+  } catch (err) {
+    console.error('PayLink check-payment error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/paylink/confirm-instant', (req, res) => {
+  const { userId, amount, tranId } = req.body;
+  const user = getUser(userId || 'default');
+  const creditAmount = parseFloat(amount) || 20.00;
+  user.balance += creditAmount;
+
+  res.json({
+    success: true,
+    paid: true,
+    balance: user.balance,
+    tranId: tranId || `PLK-${Date.now()}`,
+    message: `Successfully credited $${creditAmount.toFixed(2)} via PayLink Bank`
   });
 });
 

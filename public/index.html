@@ -22,7 +22,9 @@
           <span class="logo-1x">1X</span><span class="logo-bet">BET</span>
         </div>
         <div class="vip-badge" id="vipBadge">
-          <span class="vip-icon">★</span>
+          <span class="vip-icon">
+            <svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </span>
           <span class="vip-text">VIP PRO</span>
         </div>
       </div>
@@ -50,13 +52,13 @@
         <span class="pulsing-dot"></span> LIVE
       </div>
       <div class="ticker-content" id="tickerText">
-        <span>⚽ Real Madrid 2 - 1 Man City (74')</span>
+        <span><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20M2 12h20"/></svg> Real Madrid 2 - 1 Man City (74')</span>
         <span>•</span>
-        <span>🔥 Aviator crashed at 14.82x</span>
+        <span><svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><path d="M12 2c1 3 3 5 5 7a7 7 0 1 1-10 0c2-2 4-4 5-7z"/></svg> Aviator crashed at 14.82x</span>
         <span>•</span>
-        <span>🎾 Djokovic vs Alcaraz: Set 3 Tiebreak</span>
+        <span><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg> Djokovic vs Alcaraz: Set 3 Tiebreak</span>
         <span>•</span>
-        <span>💰 @alex_win won $4,200 on 5-fold Express!</span>
+        <span><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> @alex_win won $4,200 on 5-fold Express!</span>
       </div>
     </div>
 
@@ -81,7 +83,10 @@
           <!-- Slide 2: Aviator Crash Banner -->
           <div class="carousel-slide" style="background-image: linear-gradient(180deg, rgba(10,23,40,0.1) 0%, rgba(10,23,40,0.95) 100%), url('images/casino_banner.jpg');">
             <div class="slide-content">
-              <span class="slide-tag crash-tag">🚀 1xGAMES EXCLUSIVE</span>
+              <span class="slide-tag crash-tag">
+                <svg class="ui-icon ui-icon-sm stroke" viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09zM12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>
+                1xGAMES EXCLUSIVE
+              </span>
               <h2 class="slide-title">1xCRASH AVIATOR</h2>
               <p class="slide-desc">Cash out before the plane flies away! Win up to x10,000</p>
               <div class="slide-actions">
@@ -101,34 +106,48 @@
       <!-- NAVIGATION TABS -->
       <nav class="category-tabs" id="categoryNav">
         <button class="cat-tab active" data-tab="sports" onclick="switchTab('sports')">
-          <span class="cat-icon">⚽</span>
+          <span class="cat-icon">
+            <svg class="cat-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20M2 12h20"/></svg>
+          </span>
           <span class="cat-label">Sports</span>
         </button>
         <button class="cat-tab" data-tab="live" onclick="switchTab('live')">
-          <span class="cat-icon live-badge-icon">🔴</span>
+          <span class="cat-icon live-badge-icon">
+            <span class="pulsing-dot-orange" style="margin: 0 auto;"></span>
+          </span>
           <span class="cat-label">Live In-Play</span>
           <span class="cat-pill">18</span>
         </button>
         <button class="cat-tab stream-tab" data-tab="stream" onclick="switchTab('stream')">
-          <span class="cat-icon">📺</span>
+          <span class="cat-icon">
+            <svg class="cat-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
+          </span>
           <span class="cat-label">1xTV Live</span>
           <span class="cat-pill red-pill">STREAM</span>
         </button>
         <button class="cat-tab" data-tab="crash" onclick="switchTab('crash')">
-          <span class="cat-icon">🚀</span>
+          <span class="cat-icon">
+            <svg class="cat-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09zM12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>
+          </span>
           <span class="cat-label">1xCrash</span>
           <span class="cat-pill hot-pill">HOT</span>
         </button>
         <button class="cat-tab" data-tab="casino" onclick="switchTab('casino')">
-          <span class="cat-icon">🎰</span>
+          <span class="cat-icon">
+            <svg class="cat-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="15.5" r="1.5"/><circle cx="8.5" cy="15.5" r="1.5"/><circle cx="12" cy="12" r="1.5"/></svg>
+          </span>
           <span class="cat-label">Casino</span>
         </button>
         <button class="cat-tab" data-tab="history" onclick="switchTab('history')">
-          <span class="cat-icon">📋</span>
+          <span class="cat-icon">
+            <svg class="cat-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+          </span>
           <span class="cat-label">My Bets</span>
         </button>
         <button class="cat-tab" data-tab="wallet" onclick="switchTab('wallet')">
-          <span class="cat-icon">💳</span>
+          <span class="cat-icon">
+            <svg class="cat-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          </span>
           <span class="cat-label">Cashier</span>
         </button>
       </nav>
@@ -137,18 +156,39 @@
       <section class="tab-content active" id="tabSports">
         <!-- Sports Filter Row -->
         <div class="sub-filter-row">
-          <button class="filter-chip active" data-sport="all" onclick="filterSport('all')">🔥 All Sports</button>
-          <button class="filter-chip" data-sport="football" onclick="filterSport('football')">⚽ Football</button>
-          <button class="filter-chip" data-sport="basketball" onclick="filterSport('basketball')">🏀 Basketball</button>
-          <button class="filter-chip" data-sport="tennis" onclick="filterSport('tennis')">🎾 Tennis</button>
-          <button class="filter-chip" data-sport="esports" onclick="filterSport('esports')">🎮 Esports</button>
-          <button class="filter-chip" data-sport="mma" onclick="filterSport('mma')">🥊 UFC / MMA</button>
+          <button class="filter-chip active" data-sport="all" onclick="filterSport('all')">
+            <svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><path d="M12 2c1 3 3 5 5 7a7 7 0 1 1-10 0c2-2 4-4 5-7z"/></svg>
+            <span>All Sports</span>
+          </button>
+          <button class="filter-chip" data-sport="football" onclick="filterSport('football')">
+            <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20M2 12h20"/></svg>
+            <span>Football</span>
+          </button>
+          <button class="filter-chip" data-sport="basketball" onclick="filterSport('basketball')">
+            <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+            <span>Basketball</span>
+          </button>
+          <button class="filter-chip" data-sport="tennis" onclick="filterSport('tennis')">
+            <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+            <span>Tennis</span>
+          </button>
+          <button class="filter-chip" data-sport="esports" onclick="filterSport('esports')">
+            <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="4"/><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><circle cx="15" cy="11" r="1"/><circle cx="18" cy="13" r="1"/></svg>
+            <span>Esports</span>
+          </button>
+          <button class="filter-chip" data-sport="mma" onclick="filterSport('mma')">
+            <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>UFC / MMA</span>
+          </button>
         </div>
 
         <!-- Express Accumulator Booster Promo -->
         <div class="express-booster-card">
           <div class="booster-left">
-            <span class="booster-badge">⚡ ACCUMULATOR OF THE DAY</span>
+            <span class="booster-badge">
+              <svg class="booster-bolt" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span>ACCUMULATOR OF THE DAY</span>
+            </span>
             <div class="booster-title">+10% Odds Boost on Combo Bets!</div>
             <div class="booster-sub">Select 3 or more matches to activate the 1xBet Express Boost.</div>
           </div>
@@ -177,7 +217,8 @@
               <span>LIVE</span>
             </button>
             <button class="ls-ribbon-btn" data-filter="top" onclick="setLiveScoreFilter('top')">
-              <span>⭐ Top Leagues</span>
+              <svg class="ribbon-star-svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <span>Top Leagues</span>
             </button>
             <button class="ls-ribbon-btn" data-filter="today" onclick="setLiveScoreFilter('today')">
               <span>Today</span>
@@ -192,9 +233,13 @@
 
           <!-- LiveScore Instant Search Bar -->
           <div class="ls-search-container">
-            <span class="ls-search-icon">🔍</span>
+            <span class="ls-search-icon">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </span>
             <input type="text" id="matchLiveSearchInput" class="ls-search-input" placeholder="Search team, match, or competition..." oninput="onMatchSearchInput(this.value)">
-            <button class="ls-clear-search-btn" id="btnClearSearch" onclick="clearMatchSearch()" style="display:none;">✕</button>
+            <button class="ls-clear-search-btn" id="btnClearSearch" onclick="clearMatchSearch()" style="display:none;">
+              <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
         </div>
 
@@ -209,7 +254,9 @@
         <!-- View More (+15 Matches) Smooth Pagination -->
         <div class="view-more-container" id="viewMoreContainer" style="display: none;">
           <button class="btn-ls-view-more" id="btnViewMoreMatches" onclick="loadMoreMatches()">
-            <span class="btn-more-icon">➕</span>
+            <span class="btn-more-icon">
+              <svg class="btn-more-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </span>
             <span id="btnViewMoreText">View More (+15 Matches)</span>
           </button>
           <div class="ls-matches-counter-sub" id="matchesProgressText"></div>
@@ -244,7 +291,7 @@
 
           <!-- Live Stream Search Bar (Auto-Finds Any Game in Real Time) -->
           <div class="stream-search-bar">
-            <input type="text" id="streamSearchInput" class="stream-search-input" placeholder="🔍 Search any team/match live (e.g. Arsenal, Real Madrid, NBA)...">
+            <input type="text" id="streamSearchInput" class="stream-search-input" placeholder="Search any team/match live (e.g. Arsenal, Real Madrid, NBA)...">
             <button class="btn-search-stream" onclick="searchLiveStreamCustom()">
               <span>Auto-Find Live</span>
             </button>
@@ -269,7 +316,7 @@
                   <span class="pulsing-dot"></span> 1xTV LIVE
                 </div>
                 <div class="stream-match-pill" id="streamMatchPill">
-                  🔴 Synchronizing match broadcast...
+                  <span class="pulsing-dot-orange"></span> Synchronizing match broadcast...
                 </div>
                 <span class="stream-quality-tag">1080p 60fps</span>
               </div>
@@ -279,7 +326,10 @@
           <!-- Live In-Play Betting Under Video -->
           <div class="stream-betting-box">
             <div class="stream-betting-header">
-              <span class="stream-betting-title" id="streamBettingTitle">⚡ In-Play Live Odds</span>
+              <span class="stream-betting-title" id="streamBettingTitle">
+                <svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                <span>In-Play Live Odds</span>
+              </span>
               <span class="stream-live-indicator">LIVE BETTING ACTIVE</span>
             </div>
             <div class="odds-row" id="streamOddsRow">
@@ -289,7 +339,10 @@
 
           <!-- Match Stats Radar -->
           <div class="stream-stats-card">
-            <div class="stats-title">📊 Live Match Statistics</div>
+            <div class="stats-title">
+              <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              <span>Live Match Statistics</span>
+            </div>
             <div class="stat-bar-group">
               <div class="stat-labels">
                 <span id="statHomeTeam">Home</span>
@@ -319,7 +372,10 @@
 
           <!-- Live Match Timeline Commentary -->
           <div class="stream-timeline-card">
-            <div class="timeline-title">⚡ Live Match Events</div>
+            <div class="timeline-title">
+              <svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span>Live Match Events</span>
+            </div>
             <div class="timeline-events-list" id="streamEventsList">
               <!-- Dynamically populated commentary from active match -->
             </div>
@@ -394,7 +450,10 @@
           <!-- Live Players in Current Flight -->
           <div class="crash-players-list">
             <div class="players-header">
-              <span>✈️ Active Players in Flight</span>
+              <span class="players-header-title">
+                <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>
+                <span>Active Players in Flight</span>
+              </span>
               <span id="activeFlyersCount">38 Players</span>
             </div>
             <div class="players-scroll" id="playersScroll">
@@ -407,21 +466,27 @@
       <!-- TAB 4: 1xCASINO & SLOTS -->
       <section class="tab-content" id="tabCasino">
         <div class="casino-hero">
-          <div class="casino-hero-title">🎰 1xSLOTS & CASINO</div>
+          <div class="casino-hero-title">
+            <svg class="ui-icon ui-icon-md" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 15h.01M12 15h.01M17 15h.01M7 9h10"/></svg>
+            <span>1xSLOTS & CASINO</span>
+          </div>
           <p class="casino-hero-desc">Spin to hit the 777 Mega Jackpot and instant multipliers!</p>
         </div>
 
         <!-- 3-Reel Slot Machine -->
         <div class="slot-machine-card">
           <div class="jackpot-banner">
-            <span class="jackpot-label">🏆 MEGA JACKPOT</span>
+            <span class="jackpot-label">
+              <svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.45 1-1 1H8c-.55 0-1 .45-1 1v1h10v-1c0-.55-.45-1-1-1h-1c-.55 0-1-.45-1-1v-2.34c3.08-.63 5.43-3.23 5.86-6.66H3.14C3.57 11.43 5.92 14.03 10 14.66z"/></svg>
+              <span>MEGA JACKPOT</span>
+            </span>
             <span class="jackpot-val" id="jackpotValue">$88,420.50</span>
           </div>
 
           <div class="slot-reels-container">
-            <div class="slot-reel" id="reel1"><span>7️⃣</span></div>
-            <div class="slot-reel" id="reel2"><span>7️⃣</span></div>
-            <div class="slot-reel" id="reel3"><span>7️⃣</span></div>
+            <div class="slot-reel" id="reel1"><span class="reel-val">7</span></div>
+            <div class="slot-reel" id="reel2"><span class="reel-val">7</span></div>
+            <div class="slot-reel" id="reel3"><span class="reel-val">7</span></div>
           </div>
 
           <div class="slot-win-notice" id="slotWinNotice">Match 3 to win up to 50x your bet!</div>
@@ -437,7 +502,7 @@
               </div>
             </div>
             <button class="btn-spin-action" id="btnSpin" onclick="spinSlot()">
-              <span class="spin-icon">🎰</span>
+              <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
               <span>SPIN ($<span id="currentSlotBetDisplay">5</span>)</span>
             </button>
           </div>
@@ -445,19 +510,26 @@
 
         <!-- Popular Casino Games Grid -->
         <div class="section-heading">
-          <h3 class="heading-title">🔥 1xGames Collection</h3>
+          <h3 class="heading-title">
+            <svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><path d="M12 2c1 3 3 5 5 7a7 7 0 1 1-10 0c2-2 4-4 5-7z"/></svg>
+            <span>1xGames Collection</span>
+          </h3>
         </div>
         <div class="games-grid">
           <div class="game-card" onclick="switchTab('crash')">
             <div class="game-badge">HOT</div>
-            <div class="game-icon-box">🚀</div>
+            <div class="game-icon-box">
+              <svg class="ui-icon stroke ui-icon-lg" viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09zM12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6.05 11a22.35 22.35 0 0 1-3.95 2z"/></svg>
+            </div>
             <div class="game-info">
               <div class="game-name">Aviator Crash</div>
               <div class="game-cat">Multiplier 97% RTP</div>
             </div>
           </div>
           <div class="game-card" onclick="alertNotification('Roulette Live', 'Roulette table joining...')">
-            <div class="game-icon-box">🎡</div>
+            <div class="game-icon-box">
+              <svg class="ui-icon stroke ui-icon-lg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="4.93" y1="4.93" x2="9.17" y2="9.17"/><line x1="14.83" y1="14.83" x2="19.07" y2="19.07"/><line x1="14.83" y1="9.17" x2="19.07" y2="4.93"/><line x1="4.93" y1="19.07" x2="9.17" y2="14.83"/></svg>
+            </div>
             <div class="game-info">
               <div class="game-name">European Roulette</div>
               <div class="game-cat">Live Dealer</div>
@@ -465,14 +537,18 @@
           </div>
           <div class="game-card" onclick="alertNotification('Apple of Fortune', 'Game loading...')">
             <div class="game-badge green">NEW</div>
-            <div class="game-icon-box">🍏</div>
+            <div class="game-icon-box">
+              <svg class="ui-icon stroke ui-icon-lg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
             <div class="game-info">
               <div class="game-name">Apple of Fortune</div>
               <div class="game-cat">1xBet Classic</div>
             </div>
           </div>
           <div class="game-card" onclick="alertNotification('Dice 777', 'Dice roll opening...')">
-            <div class="game-icon-box">🎲</div>
+            <div class="game-icon-box">
+              <svg class="ui-icon stroke ui-icon-lg" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 8h.01M8 8h.01M8 16h.01M16 16h.01M12 12h.01"/></svg>
+            </div>
             <div class="game-info">
               <div class="game-name">Under & Over 7</div>
               <div class="game-cat">Instant Win</div>
@@ -517,32 +593,21 @@
           </div>
         </div>
 
-        <!-- Payment Methods Grid -->
+        <!-- Payment Methods: PayLink Bank Only -->
         <div class="section-heading">
-          <h3 class="heading-title">💳 Fast Payment Options</h3>
+          <h3 class="heading-title">
+            <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            <span>Exclusive Payment Gateway</span>
+          </h3>
         </div>
-        <div class="payment-methods-grid">
-          <div class="payment-card" onclick="selectDepositMethod('paylink')">
-            <div class="method-badge">INSTANT</div>
-            <div class="method-icon">🏦</div>
+        <div class="payment-methods-grid single-gateway">
+          <div class="payment-card paylink-highlight" onclick="openDepositModal()">
+            <div class="method-badge">OFFICIAL INSTANT KHQR</div>
+            <div class="method-icon">
+              <svg class="ui-icon stroke ui-icon-lg" viewBox="0 0 24 24"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v4M12 14v4M16 14v4"/></svg>
+            </div>
             <div class="method-name">PayLink Bank</div>
-            <div class="method-fee">0% Commission</div>
-          </div>
-          <div class="payment-card" onclick="selectDepositMethod('bank')">
-            <div class="method-icon">🏛️</div>
-            <div class="method-name">Bank Transfer</div>
-            <div class="method-fee">Direct Deposit</div>
-          </div>
-          <div class="payment-card" onclick="selectDepositMethod('telebirr')">
-            <div class="method-badge green">POPULAR</div>
-            <div class="method-icon">📱</div>
-            <div class="method-name">Telebirr / Mobile</div>
-            <div class="method-fee">Instant QR / Number</div>
-          </div>
-          <div class="payment-card" onclick="selectDepositMethod('crypto')">
-            <div class="method-icon">🪙</div>
-            <div class="method-name">USDT / TON / BTC</div>
-            <div class="method-fee">Automated Crypto</div>
+            <div class="method-fee">0% Fee • Instant Auto-Credit via Bakong KHQR</div>
           </div>
         </div>
 
@@ -586,7 +651,9 @@
         <span>Live</span>
       </button>
       <button class="nav-item highlight-nav" data-tab="crash" onclick="switchTab('crash')">
-        <div class="nav-hot-icon">🚀</div>
+        <div class="nav-hot-icon">
+          <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09zM12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6.05 11a22.35 22.35 0 0 1-3.95 2z"/></svg>
+        </div>
         <span>Crash</span>
       </button>
       <button class="nav-item" data-tab="casino" onclick="switchTab('casino')">
@@ -614,7 +681,9 @@
           </div>
           <div class="drawer-header-actions">
             <button class="btn-clear-slip" onclick="clearBetslip()">Clear All</button>
-            <button class="btn-close-drawer" onclick="toggleBetslipModal(false)">✕</button>
+            <button class="btn-close-drawer" onclick="toggleBetslipModal(false)">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
         </div>
 
@@ -640,7 +709,10 @@
               <span class="calc-val odds-val" id="calcTotalOdds">1.00</span>
             </div>
             <div class="calc-row" id="expressBonusRow" style="display:none;">
-              <span class="calc-label gold-text">⚡ 1xExpress +10% Bonus:</span>
+              <span class="calc-label gold-text">
+                <svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                <span>1xExpress +10% Bonus:</span>
+              </span>
               <span class="calc-val gold-text" id="calcExpressBonus">+$0.00</span>
             </div>
             <div class="calc-row">
@@ -672,72 +744,100 @@
       </div>
     </div>
 
-    <!-- DEPOSIT MODAL -->
+    <!-- DEPOSIT MODAL (PAYLINK BANK KHQR ONLY) -->
     <div class="modal-overlay" id="depositModal">
       <div class="deposit-dialog">
         <div class="dialog-header">
-          <div class="dialog-title">Deposit to 1xBet Account</div>
-          <button class="btn-close-modal" onclick="closeDepositModal()">✕</button>
-        </div>
-        <div class="dialog-body">
-          <div class="deposit-methods-pills">
-            <button class="dep-pill active" onclick="setDepositTab('paylink')">PayLink Bank</button>
-            <button class="dep-pill" onclick="setDepositTab('bank')">Local Bank</button>
-            <button class="dep-pill" onclick="setDepositTab('crypto')">USDT / Crypto</button>
+          <div class="dialog-title-group">
+            <div class="dialog-title">Deposit with PayLink Bank</div>
+            <div class="dialog-subtitle">Official KHQR Instant Payment Gateway</div>
           </div>
+          <button class="btn-close-modal" onclick="closeDepositModal()">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
 
-          <!-- Method 1: PayLink Bank -->
-          <div class="deposit-tab-pane active" id="depPanePayLink">
+        <div class="dialog-body">
+          <!-- STEP 1: SELECT AMOUNT -->
+          <div class="paylink-step-pane active" id="paylinkAmountStep">
             <div class="paylink-intro-box">
-              <div class="paylink-badge">⚡ INSTANT GATEWAY</div>
-              <p>Deposit securely using PayLink Bank API. Funds are credited instantly.</p>
-            </div>
-            <div class="form-group">
-              <label>Amount to Deposit ($):</label>
-              <div class="amount-quick-buttons">
-                <button type="button" class="amt-btn" onclick="setDepositAmt(20)">$20</button>
-                <button type="button" class="amt-btn active" onclick="setDepositAmt(50)">$50</button>
-                <button type="button" class="amt-btn" onclick="setDepositAmt(100)">$100</button>
-                <button type="button" class="amt-btn" onclick="setDepositAmt(250)">$250</button>
+              <div class="paylink-badge">
+                <svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                <span>INSTANT KHQR GATEWAY</span>
               </div>
-              <input type="number" id="depositAmountInput" class="dialog-input" value="50" min="5">
+              <p>Generate a real Bakong KHQR code using PayLink Bank. Scan with ABA, ACLEDA, or any Bakong banking app for instant deposit.</p>
             </div>
+
+            <div class="form-group">
+              <label>Amount to Deposit ($ USD):</label>
+              <div class="amount-quick-buttons">
+                <button type="button" class="amt-btn" onclick="setDepositAmt(10)">$10</button>
+                <button type="button" class="amt-btn active" onclick="setDepositAmt(20)">$20</button>
+                <button type="button" class="amt-btn" onclick="setDepositAmt(50)">$50</button>
+                <button type="button" class="amt-btn" onclick="setDepositAmt(100)">$100</button>
+              </div>
+              <div class="input-with-symbol">
+                <span class="input-curr-symbol">$</span>
+                <input type="number" id="depositAmountInput" class="dialog-input amount-large" value="20" min="1" step="1">
+              </div>
+            </div>
+
             <div class="form-group">
               <label>Bonus Promo Code (Optional):</label>
               <input type="text" id="depositPromoCode" class="dialog-input" placeholder="Enter '1XVIP' for +100%">
             </div>
-            <button class="btn-submit-deposit" onclick="executeDeposit('paylink')">
-              Proceed with PayLink Bank
+
+            <button class="btn-submit-deposit" id="btnGeneratePaylinkQR" onclick="generatePaylinkDeposit()">
+              <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="7" y="7" width="1" height="1"/><rect x="18" y="7" width="1" height="1"/><rect x="7" y="18" width="1" height="1"/></svg>
+              <span id="btnGeneratePaylinkText">Generate PayLink KHQR</span>
             </button>
           </div>
 
-          <!-- Method 2: Local Bank Transfer -->
-          <div class="deposit-tab-pane" id="depPaneBank">
-            <div class="bank-details-card">
-              <div class="bank-row"><span>Bank Name:</span> <strong>Commercial / Awash Bank</strong></div>
-              <div class="bank-row"><span>Account Name:</span> <strong>1xBet Official Operations</strong></div>
-              <div class="bank-row"><span>Account Number:</span> <strong>1000 4829 1920 38</strong></div>
-              <div class="bank-row"><span>Reference Code:</span> <strong class="ref-code" id="depRefCode">1X-99482</strong></div>
+          <!-- STEP 2: SCAN & PAY KHQR (Active after generation) -->
+          <div class="paylink-step-pane" id="paylinkQrStep" style="display: none;">
+            <div class="paylink-qr-card">
+              <div class="paylink-qr-header">
+                <div class="khqr-logo-tag">KHQR</div>
+                <div class="khqr-merchant-info">
+                  <span class="khqr-merchant-name" id="plkMerchantName">1xBet VIP</span>
+                  <span class="khqr-tran-id" id="plkTranIdDisplay">ID: PLK-89210</span>
+                </div>
+              </div>
+
+              <div class="paylink-amount-callout">
+                <span class="curr-tag">USD</span>
+                <span class="callout-val" id="plkAmountDisplay">$20.00</span>
+              </div>
+
+              <div class="paylink-qr-wrapper">
+                <img id="paylinkQrImage" src="" class="paylink-qr-img" alt="Bakong KHQR Code" />
+                <div class="qr-scan-guide">Scan with ABA Mobile, ACLEDA, Wing, or Bakong</div>
+              </div>
+
+              <div class="paylink-actions-group">
+                <button class="paylink-deeplink-btn" id="btnPaylinkDeepLink" onclick="openPaylinkDeepLink()">
+                  <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  <span>Open in Bakong App</span>
+                </button>
+
+                <button class="paylink-check-btn" id="btnCheckPayment" onclick="checkPaylinkPaymentManual()">
+                  <svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span id="btnCheckPaymentText">I Have Paid • Verify Now</span>
+                </button>
+
+                <button class="paylink-back-btn" onclick="resetPaylinkDepositForm()">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                  <span>Change Amount / Cancel</span>
+                </button>
+              </div>
+
+              <div class="paylink-status-indicator">
+                <span class="status-pulse-dot"></span>
+                <span id="plkStatusText">Awaiting payment confirmation...</span>
+              </div>
             </div>
-            <p class="bank-instructions">Transfer the exact amount and enter the reference number from your receipt.</p>
-            <div class="form-group">
-              <label>Transaction / Transfer Reference:</label>
-              <input type="text" id="bankRefInput" class="dialog-input" placeholder="e.g. TXN-89410928">
-            </div>
-            <button class="btn-submit-deposit" onclick="executeDeposit('bank')">Confirm Bank Transfer</button>
           </div>
 
-          <!-- Method 3: Crypto -->
-          <div class="deposit-tab-pane" id="depPaneCrypto">
-            <div class="crypto-qr-box">
-              <div class="qr-placeholder">
-                <svg viewBox="0 0 24 24" width="80" height="80" stroke="currentColor" fill="none" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="7" y="7" width="1" height="1"/><rect x="18" y="7" width="1" height="1"/><rect x="7" y="18" width="1" height="1"/></svg>
-              </div>
-              <div class="crypto-addr-label">USDT (TRC20) Network:</div>
-              <div class="crypto-addr-text">TKw4hL8e5v9qZp3MNa7B2dC1xBetOfficial</div>
-            </div>
-            <button class="btn-submit-deposit" onclick="executeDeposit('crypto')">I Have Sent Crypto</button>
-          </div>
         </div>
       </div>
     </div>
@@ -747,16 +847,16 @@
       <div class="deposit-dialog">
         <div class="dialog-header">
           <div class="dialog-title">Withdraw Winnings</div>
-          <button class="btn-close-modal" onclick="closeWithdrawModal()">✕</button>
+          <button class="btn-close-modal" onclick="closeWithdrawModal()">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
         <div class="dialog-body">
           <div class="form-group">
             <label>Withdrawal Method:</label>
             <select id="withdrawMethodSelect" class="dialog-select">
-              <option value="bank">Bank Transfer (Direct to Account)</option>
-              <option value="paylink">PayLink Payout</option>
-              <option value="telebirr">Telebirr / Mobile Money</option>
-              <option value="usdt">USDT TRC20 Wallet</option>
+              <option value="paylink">PayLink Payout (Bakong / ABA)</option>
+              <option value="bank">Bank Transfer (Direct Account)</option>
             </select>
           </div>
           <div class="form-group">
@@ -764,8 +864,8 @@
             <input type="number" id="withdrawAmountInput" class="dialog-input" placeholder="Min $10" value="50">
           </div>
           <div class="form-group">
-            <label>Account Number / Wallet Address:</label>
-            <input type="text" id="withdrawAccountInput" class="dialog-input" placeholder="Enter bank account or address">
+            <label>Account Number / Bakong ID:</label>
+            <input type="text" id="withdrawAccountInput" class="dialog-input" placeholder="Enter bank account or Bakong phone/ID">
           </div>
           <button class="btn-submit-withdraw" onclick="executeWithdrawal()">Submit Withdrawal Request</button>
         </div>
@@ -774,7 +874,9 @@
 
     <!-- SUCCESS TOAST NOTIFICATION -->
     <div class="toast-notification" id="appToast">
-      <div class="toast-icon" id="toastIcon">✓</div>
+      <div class="toast-icon" id="toastIcon">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
       <div class="toast-message" id="toastMessage">Bet placed successfully!</div>
     </div>
 

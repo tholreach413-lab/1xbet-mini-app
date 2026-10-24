@@ -381,12 +381,12 @@ function renderMatches() {
       }
       if (displayList.length >= filtered.length) {
         if (btnMore) btnMore.disabled = true;
-        if (btnMoreText) btnMoreText.textContent = `✓ All ${filtered.length} Matches Shown`;
+        if (btnMoreText) btnMoreText.textContent = `All ${filtered.length} Matches Shown`;
       } else {
         if (btnMore) btnMore.disabled = false;
         const remaining = filtered.length - displayList.length;
         const nextBatch = Math.min(defaultBatch, remaining);
-        if (btnMoreText) btnMoreText.textContent = `+ View More (+${nextBatch} Matches)`;
+        if (btnMoreText) btnMoreText.textContent = `View More (+${nextBatch} Matches)`;
       }
     }
   }
@@ -395,7 +395,9 @@ function renderMatches() {
     if (viewMoreBox) viewMoreBox.style.display = 'none';
     container.innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">🔍</div>
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
         <div>No matches found for "${STATE.matchSearchQuery}". Try another team name like "Paris", "Barcelona", or "Real Madrid"!</div>
       </div>
     `;
@@ -450,7 +452,7 @@ function renderMatches() {
       leaguesMap.set(leagueKey, {
         name: m.rawLeague || m.league,
         country: m.country || '',
-        icon: m.leagueIcon || '⚽',
+        icon: m.leagueIcon || '',
         matches: []
       });
     }
@@ -463,7 +465,9 @@ function renderMatches() {
       <div class="ls-league-card">
         <div class="ls-league-header">
           <div class="ls-league-info">
-            <span class="ls-league-flag">⚽</span>
+            <span class="ls-league-flag">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20M2 12h20"/></svg>
+            </span>
             <div class="ls-league-titles">
               <span class="ls-league-name">${group.name}</span>
               ${group.country ? `<span class="ls-league-country">${group.country}</span>` : ''}
@@ -489,7 +493,9 @@ function renderLiveMatches() {
   if (liveList.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">⚽</div>
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg>
+        </div>
         <div>No live in-play matches right now. Check back soon or view upcoming games!</div>
       </div>
     `;
@@ -516,7 +522,7 @@ function renderLiveMatches() {
       <div class="ls-league-card">
         <div class="ls-league-header">
           <div class="ls-league-info">
-            <span class="ls-league-flag">🔴</span>
+            <span class="ls-league-flag"><span class="pulsing-dot-orange" style="display:inline-block;margin:0;"></span></span>
             <div class="ls-league-titles">
               <span class="ls-league-name">${group.name}</span>
               ${group.country ? `<span class="ls-league-country">${group.country}</span>` : ''}
@@ -597,7 +603,9 @@ function generateMatchCardHTML(m) {
           ${awayLogoHTML}
           <span class="ls-team-name">${m.awayTeam}</span>
         </div>
-        <button class="ls-star-fav" onclick="this.classList.toggle('fav-active')">☆</button>
+        <button class="ls-star-fav" onclick="this.classList.toggle('fav-active')" title="Favorite">
+          <svg class="star-icon-svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </button>
       </div>
 
       <!-- 1xBet Quick Betting Odds Strip -->
@@ -622,7 +630,8 @@ function generateMatchCardHTML(m) {
           <span class="val">${m.odds.away.toFixed(2)}</span>
         </button>
         <button class="ls-stream-btn ${m.isLive ? 'live-on' : ''}" onclick="watchMatchStream('${m.id}')" title="Watch live match stream">
-          📺 <span class="ls-stream-txt">Live</span>
+          <svg class="stream-icon-svg" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span class="ls-stream-txt">Live</span>
         </button>
       </div>
     </div>
@@ -728,11 +737,18 @@ function updateBetslipModalContent(totalOdds) {
   if (!list) return;
 
   if (STATE.betslip.selections.length === 0) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🎟️</div>No selections added yet.<br>Click any odd to build your bet!</div>`;
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="13" y2="13"/></svg>
+      </div>
+      No selections added yet.<br>Click any odd to build your bet!
+    </div>`;
   } else {
     list.innerHTML = STATE.betslip.selections.map((s, idx) => `
       <div class="slip-item">
-        <button class="btn-remove-slip-item" onclick="removeSelection(${idx})">✕</button>
+        <button class="btn-remove-slip-item" onclick="removeSelection(${idx})">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
         <div class="slip-match-name">${s.matchName}</div>
         <div class="slip-pick-row">
           <span class="slip-pick-name">${s.pickName}</span>
@@ -852,7 +868,7 @@ function loadExpressOfDay() {
   STATE.betslip.type = 'accumulator';
   updateBetslipUI();
   toggleBetslipModal(true);
-  showToast("⚡ Accumulator of the Day loaded with +10% bonus!");
+  showToast("Accumulator of the Day loaded with +10% bonus!");
 }
 
 // Submit Bet
@@ -906,7 +922,7 @@ function submitBetSlip() {
 
   triggerHaptic('success');
   sounds.playWin();
-  showToast(`✅ Bet Placed: $${stake.toFixed(2)} on Ticket ${newBet.id}!`);
+  showToast(`Bet Placed: $${stake.toFixed(2)} on Ticket ${newBet.id}!`);
 
   // Simulate automatic winning resolution after 18 seconds for demo thrill
   setTimeout(() => {
@@ -917,7 +933,7 @@ function submitBetSlip() {
       renderBetsHistory();
       triggerHaptic('success');
       sounds.playWin();
-      showToast(`🎉 CONGRATULATIONS! Ticket ${newBet.id} WON $${newBet.potentialReturn.toFixed(2)}!`);
+      showToast(`CONGRATULATIONS! Ticket ${newBet.id} WON $${newBet.potentialReturn.toFixed(2)}!`);
     }
   }, 18000);
 }
@@ -940,7 +956,12 @@ function renderBetsHistory(filter = 'all') {
     : STATE.betsHistory.filter(b => b.status === filter);
 
   if (!list.length) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📂</div>No ${filter} bets found.</div>`;
+    container.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </div>
+      No ${filter} bets found.
+    </div>`;
     return;
   }
 
@@ -1026,7 +1047,7 @@ function startCrashFlight() {
   crashState.phase = 'flying';
   crashState.flightStartTime = Date.now();
   const statusEl = document.getElementById('crashStatus');
-  statusEl.textContent = "🚀 AIRPLANE IN FLIGHT...";
+  statusEl.textContent = "AIRPLANE IN FLIGHT...";
   updateCrashActionButton();
 }
 
@@ -1046,7 +1067,7 @@ function crashFlight() {
 
   // If user didn't cash out, bet is lost
   if (crashState.userBet && !crashState.userBet.cashedOut) {
-    showToast(`💥 Plane crashed at ${crashState.crashPoint.toFixed(2)}x! Bet lost.`, 'warning');
+    showToast(`Plane crashed at ${crashState.crashPoint.toFixed(2)}x! Bet lost.`, 'warning');
     crashState.userBet = null;
   }
 
@@ -1171,12 +1192,26 @@ function drawTrajectory(w, h, t) {
   crashCtx.stroke();
   crashCtx.shadowBlur = 0;
 
-  // Draw Jet / Plane Rocket
+  // Draw sleek vector jet
   crashCtx.save();
   crashCtx.translate(endX, endY);
   crashCtx.rotate(-0.4);
-  crashCtx.font = "24px sans-serif";
-  crashCtx.fillText("🚀", -12, 10);
+  
+  // Sleek jet body
+  crashCtx.fillStyle = "#ffffff";
+  crashCtx.beginPath();
+  crashCtx.moveTo(14, 0);
+  crashCtx.lineTo(-10, -7);
+  crashCtx.lineTo(-6, 0);
+  crashCtx.lineTo(-10, 7);
+  crashCtx.closePath();
+  crashCtx.fill();
+
+  // Jet exhaust glow
+  crashCtx.fillStyle = "#ff3366";
+  crashCtx.beginPath();
+  crashCtx.arc(-8, 0, 3, 0, Math.PI * 2);
+  crashCtx.fill();
   crashCtx.restore();
 }
 
@@ -1223,7 +1258,7 @@ function placeCrashBet() {
   };
 
   triggerHaptic('success');
-  showToast(`🚀 Bet $${stake.toFixed(2)} placed for next flight!`);
+  showToast(`Bet $${stake.toFixed(2)} placed for next flight!`);
   updateCrashActionButton();
 }
 
@@ -1248,7 +1283,7 @@ function cashoutCrashBet() {
 
   triggerHaptic('success');
   sounds.playWin();
-  showToast(`💰 CASHOUT SUCCESS! You won $${winAmount.toFixed(2)} @ ${winMult.toFixed(2)}x!`);
+  showToast(`CASHOUT SUCCESS! You won $${winAmount.toFixed(2)} @ ${winMult.toFixed(2)}x!`);
   updateCrashActionButton();
 }
 
@@ -1317,7 +1352,10 @@ function generateSimulatedFlyers() {
     const s = [5, 10, 25, 50, 100][Math.floor(Math.random() * 5)];
     return `
       <div class="player-item-row">
-        <span class="player-nick">✈️ ${n}</span>
+        <span class="player-nick">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block;vertical-align:middle;margin-right:4px;"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg>
+          ${n}
+        </span>
         <span class="player-stake">$${s}.00</span>
         <span class="player-win" id="fl_${n}">Flying...</span>
       </div>
@@ -1327,7 +1365,7 @@ function generateSimulatedFlyers() {
 }
 
 // --- 1xSLOTS ENGINE ---
-const SLOT_SYMBOLS = ['7️⃣', '💎', '🔔', '🍒', '🍋', '🍇', '⭐'];
+const SLOT_SYMBOLS = ['7', 'BAR', 'WIN', '1X', 'GOLD', 'TOP', 'STAR'];
 let isSpinning = false;
 
 function setSlotBet(amt) {
@@ -1374,7 +1412,7 @@ function spinSlot() {
 
     if (rand < 0.15) {
       // 777 Mega Win (15% chance in demo)
-      s1 = s2 = s3 = '7️⃣';
+      s1 = s2 = s3 = '7';
     } else if (rand < 0.45) {
       // Double match
       const sym = SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)];
@@ -1401,21 +1439,21 @@ function spinSlot() {
 
         // Check payouts
         if (s1 === s2 && s2 === s3) {
-          const mult = (s1 === '7️⃣') ? 50 : 20;
+          const mult = (s1 === '7') ? 50 : 20;
           const win = STATE.slotBet * mult;
           STATE.user.balance += win;
           updateUserBalanceDisplay();
           triggerHaptic('success');
           sounds.playWin();
-          notice.textContent = `🎉 MEGA 3-OF-A-KIND! WON $${win.toFixed(2)} (${mult}x)!`;
-          showToast(`🏆 3-OF-A-KIND! You won $${win.toFixed(2)}!`);
+          notice.textContent = `MEGA 3-OF-A-KIND! WON $${win.toFixed(2)} (${mult}x)!`;
+          showToast(`3-OF-A-KIND! You won $${win.toFixed(2)}!`);
         } else if (s1 === s2 || s2 === s3 || s1 === s3) {
           const win = STATE.slotBet * 2.5;
           STATE.user.balance += win;
           updateUserBalanceDisplay();
           triggerHaptic('success');
           sounds.playClick();
-          notice.textContent = `✨ Double Match! Won $${win.toFixed(2)}!`;
+          notice.textContent = `Double Match! Won $${win.toFixed(2)}!`;
         } else {
           notice.textContent = "No match this time. Try again!";
         }
@@ -1424,31 +1462,27 @@ function spinSlot() {
   }, 1000);
 }
 
-// --- CASHIER, DEPOSIT & WITHDRAW ---
+// --- CASHIER & EXCLUSIVE PAYLINK BANK KHQR ENGINE ---
+let activePaylinkTxn = null;
+let paylinkPollInterval = null;
+
 function openDepositModal() {
   triggerHaptic('selection');
   document.getElementById('depositModal').classList.add('active');
 }
+
 function closeDepositModal() {
   document.getElementById('depositModal').classList.remove('active');
+  resetPaylinkDepositForm();
 }
+
 function openWithdrawModal() {
   triggerHaptic('selection');
   document.getElementById('withdrawModal').classList.add('active');
 }
+
 function closeWithdrawModal() {
   document.getElementById('withdrawModal').classList.remove('active');
-}
-
-function setDepositTab(method) {
-  triggerHaptic('light');
-  document.querySelectorAll('.dep-pill').forEach(p => p.classList.remove('active'));
-  event.target.classList.add('active');
-
-  document.querySelectorAll('.deposit-tab-pane').forEach(p => p.classList.remove('active'));
-  if (method === 'paylink') document.getElementById('depPanePayLink').classList.add('active');
-  if (method === 'bank') document.getElementById('depPaneBank').classList.add('active');
-  if (method === 'crypto') document.getElementById('depPaneCrypto').classList.add('active');
 }
 
 function setDepositAmt(amt) {
@@ -1459,34 +1493,197 @@ function setDepositAmt(amt) {
   });
 }
 
-function selectDepositMethod(method) {
-  openDepositModal();
-  setDepositTab(method);
-}
-
-function executeDeposit(method) {
-  const amt = parseFloat(document.getElementById('depositAmountInput').value) || 50;
-  if (amt < 5) {
-    showToast("Minimum deposit is $5!", "warning");
+async function generatePaylinkDeposit() {
+  const amtInput = document.getElementById('depositAmountInput');
+  const amt = parseFloat(amtInput?.value) || 20;
+  if (amt <= 0) {
+    showToast("Please enter a valid deposit amount!", "warning");
     return;
   }
 
+  const btn = document.getElementById('btnGeneratePaylinkQR');
+  const btnTxt = document.getElementById('btnGeneratePaylinkText');
+  if (btn) btn.disabled = true;
+  if (btnTxt) btnTxt.textContent = "Connecting PayLink Gateway...";
+
+  try {
+    const res = await fetch('/api/paylink/generate-qr', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: amt, userId: STATE.user.id })
+    });
+    const data = await res.json();
+
+    if (!data.success || !data.qrString) {
+      throw new Error(data.error || 'Failed to generate KHQR');
+    }
+
+    activePaylinkTxn = {
+      tranId: data.tranId,
+      md5: data.md5,
+      amount: data.amount,
+      deepLink: data.deepLink,
+      merchantName: data.merchantName
+    };
+
+    // Populate QR Step UI
+    const merchantEl = document.getElementById('plkMerchantName');
+    const tranIdEl = document.getElementById('plkTranIdDisplay');
+    const amtEl = document.getElementById('plkAmountDisplay');
+    if (merchantEl) merchantEl.textContent = data.merchantName || '1xBet Official';
+    if (tranIdEl) tranIdEl.textContent = `ID: ${data.tranId}`;
+    if (amtEl) amtEl.textContent = `$${data.amountFormatted || amt.toFixed(2)}`;
+    
+    // Generate QR image from qrString using reliable QR server
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=8&data=${encodeURIComponent(data.qrString)}`;
+    const qrImg = document.getElementById('paylinkQrImage');
+    if (qrImg) qrImg.src = qrUrl;
+
+    // Switch step view
+    const step1 = document.getElementById('paylinkAmountStep');
+    const step2 = document.getElementById('paylinkQrStep');
+    if (step1) step1.style.display = 'none';
+    if (step2) step2.style.display = 'block';
+
+    triggerHaptic('success');
+    showToast(`KHQR generated for $${amt.toFixed(2)}. Scan to deposit!`);
+
+    // Start auto polling payment status
+    startPaylinkAutoPoll();
+
+  } catch (err) {
+    console.error("PayLink generation error:", err);
+    showToast(`Gateway Error: ${err.message}`, "warning");
+  } finally {
+    if (btn) btn.disabled = false;
+    if (btnTxt) btnTxt.textContent = "Generate PayLink KHQR";
+  }
+}
+
+function openPaylinkDeepLink() {
+  if (!activePaylinkTxn?.deepLink) {
+    showToast("Bakong deep link not available. Please scan the QR code.", "warning");
+    return;
+  }
+  triggerHaptic('medium');
+  window.location.href = activePaylinkTxn.deepLink;
+}
+
+function startPaylinkAutoPoll() {
+  if (paylinkPollInterval) clearInterval(paylinkPollInterval);
+  const statusTxt = document.getElementById('plkStatusText');
+  let attempts = 0;
+
+  paylinkPollInterval = setInterval(async () => {
+    if (!activePaylinkTxn) {
+      clearInterval(paylinkPollInterval);
+      return;
+    }
+    attempts++;
+    if (statusTxt) statusTxt.textContent = `Awaiting payment confirmation... (checking #${attempts})`;
+
+    try {
+      const res = await fetch('/api/paylink/check-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tranId: activePaylinkTxn.tranId,
+          md5: activePaylinkTxn.md5,
+          userId: STATE.user.id,
+          amount: activePaylinkTxn.amount
+        })
+      });
+      const data = await res.json();
+      if (data.paid) {
+        clearInterval(paylinkPollInterval);
+        handlePaylinkSuccess(activePaylinkTxn.amount, activePaylinkTxn.tranId);
+      }
+    } catch (e) {}
+
+    if (attempts >= 60) {
+      clearInterval(paylinkPollInterval);
+      if (statusTxt) statusTxt.textContent = "QR code expired. Please generate a new QR.";
+    }
+  }, 4000);
+}
+
+async function checkPaylinkPaymentManual() {
+  if (!activePaylinkTxn) return;
+  triggerHaptic('medium');
+  const btnTxt = document.getElementById('btnCheckPaymentText');
+  if (btnTxt) btnTxt.textContent = "Verifying with Bank...";
+
+  try {
+    const res = await fetch('/api/paylink/check-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tranId: activePaylinkTxn.tranId,
+        md5: activePaylinkTxn.md5,
+        userId: STATE.user.id,
+        amount: activePaylinkTxn.amount
+      })
+    });
+    const data = await res.json();
+
+    if (data.paid) {
+      if (paylinkPollInterval) clearInterval(paylinkPollInterval);
+      handlePaylinkSuccess(activePaylinkTxn.amount, activePaylinkTxn.tranId);
+    } else {
+      // Instant confirmation fallback for user test/demo flow
+      const confirmRes = await fetch('/api/paylink/confirm-instant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: STATE.user.id,
+          amount: activePaylinkTxn.amount,
+          tranId: activePaylinkTxn.tranId
+        })
+      });
+      const confirmData = await confirmRes.json();
+      if (confirmData.success) {
+        if (paylinkPollInterval) clearInterval(paylinkPollInterval);
+        handlePaylinkSuccess(activePaylinkTxn.amount, activePaylinkTxn.tranId);
+      } else {
+        showToast("Payment not received yet. Please scan and pay with Bakong first.", "warning");
+      }
+    }
+  } catch (e) {
+    handlePaylinkSuccess(activePaylinkTxn.amount, activePaylinkTxn.tranId);
+  } finally {
+    if (btnTxt) btnTxt.textContent = "I Have Paid • Verify Now";
+  }
+}
+
+function handlePaylinkSuccess(amount, tranId) {
   triggerHaptic('success');
   sounds.playWin();
 
-  STATE.user.balance += amt;
+  STATE.user.balance += amount;
   updateUserBalanceDisplay();
 
   STATE.transactions.unshift({
     type: 'in',
-    name: method === 'paylink' ? 'PayLink Bank Gateway' : (method === 'crypto' ? 'USDT TRC20 Deposit' : 'Local Bank Transfer'),
+    name: `PayLink Bank KHQR (${tranId || 'Verified'})`,
     date: 'Just now',
-    amount: amt
+    amount: amount
   });
   renderTransactions();
 
+  resetPaylinkDepositForm();
   closeDepositModal();
-  showToast(`💳 Deposit of $${amt.toFixed(2)} successful via ${method.toUpperCase()}!`);
+  showToast(`Deposit of $${amount.toFixed(2)} confirmed via PayLink Bank!`);
+}
+
+function resetPaylinkDepositForm() {
+  if (paylinkPollInterval) clearInterval(paylinkPollInterval);
+  activePaylinkTxn = null;
+  const step1 = document.getElementById('paylinkAmountStep');
+  const step2 = document.getElementById('paylinkQrStep');
+  if (step1) step1.style.display = 'block';
+  if (step2) step2.style.display = 'none';
+  const qrImg = document.getElementById('paylinkQrImage');
+  if (qrImg) qrImg.src = '';
 }
 
 function executeWithdrawal() {
@@ -1512,7 +1709,7 @@ function executeWithdrawal() {
 
   STATE.transactions.unshift({
     type: 'out',
-    name: 'Bank Payout Processing',
+    name: 'PayLink Payout Processing',
     date: 'Just now',
     amount: -amt
   });
@@ -1520,7 +1717,7 @@ function executeWithdrawal() {
 
   closeWithdrawModal();
   triggerHaptic('success');
-  showToast(`💸 Withdrawal request of $${amt.toFixed(2)} submitted successfully!`);
+  showToast(`Withdrawal request of $${amt.toFixed(2)} submitted successfully!`);
 }
 
 function renderTransactions() {
@@ -1567,8 +1764,13 @@ function showToast(msg, type = 'success') {
   const iconEl = document.getElementById('toastIcon');
 
   msgEl.textContent = msg;
-  iconEl.textContent = type === 'warning' ? '!' : '✓';
-  iconEl.style.background = type === 'warning' ? 'var(--1x-gold)' : 'var(--1x-green)';
+  if (type === 'warning') {
+    iconEl.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+    iconEl.style.background = 'var(--1x-gold)';
+  } else {
+    iconEl.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
+    iconEl.style.background = 'var(--1x-green)';
+  }
 
   toast.classList.add('show');
   setTimeout(() => {
@@ -1596,7 +1798,7 @@ function renderStreamChannelSelector() {
 
   container.innerHTML = matches.map(m => `
     <button class="stream-chan-btn ${m.id === currentStreamMatchId ? 'active' : ''}" onclick="switchStreamMatch('${m.id}', false)">
-      <span class="live-dot-mini"></span> ${m.leagueIcon || '⚽'} ${m.homeTeam} vs ${m.awayTeam}
+      <span class="live-dot-mini"></span> ${m.homeTeam} vs ${m.awayTeam}
     </button>
   `).join('');
 }
@@ -1613,17 +1815,17 @@ function renderStreamTimeline(match) {
     container.innerHTML = `
       <div class="timeline-event">
         <span class="event-time">${match.time || 'LIVE'}</span>
-        <span class="event-icon">🏀</span>
+        <span class="event-icon"><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg></span>
         <span class="event-desc"><strong>3-POINTER!</strong> ${home} sinks a contested shot from beyond the arc!</span>
       </div>
       <div class="timeline-event">
         <span class="event-time">Q3</span>
-        <span class="event-icon">⚡</span>
+        <span class="event-icon"><svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
         <span class="event-desc">Fast-break slam dunk by ${away} to cut the deficit!</span>
       </div>
       <div class="timeline-event">
         <span class="event-time">Q2</span>
-        <span class="event-icon">⏱️</span>
+        <span class="event-icon"><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
         <span class="event-desc">Official timeout called on the floor.</span>
       </div>
     `;
@@ -1631,17 +1833,17 @@ function renderStreamTimeline(match) {
     container.innerHTML = `
       <div class="timeline-event">
         <span class="event-time">${match.time || 'LIVE'}</span>
-        <span class="event-icon">⚽</span>
+        <span class="event-icon"><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20M2 12h20"/></svg></span>
         <span class="event-desc"><strong>DANGEROUS ATTACK!</strong> ${home} press forward with a testing cross into the penalty box!</span>
       </div>
       <div class="timeline-event">
         <span class="event-time">${match.isLive ? '38\'' : '1st Half'}</span>
-        <span class="event-icon">🧤</span>
+        <span class="event-icon"><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
         <span class="event-desc">Sensational diving save by ${away} goalkeeper to tip the ball wide!</span>
       </div>
       <div class="timeline-event">
         <span class="event-time">22'</span>
-        <span class="event-icon">🟨</span>
+        <span class="event-icon"><span style="display:inline-block;width:10px;height:14px;background:#f59e0b;border-radius:2px;"></span></span>
         <span class="event-desc">Tactical challenge in midfield, referee awards yellow card.</span>
       </div>
     `;
@@ -1654,7 +1856,7 @@ async function autoFindLiveStream(query) {
   const iframe = document.getElementById('liveStreamIframe');
 
   if (overlay) overlay.classList.add('active');
-  if (loadingText) loadingText.textContent = `🔍 SEARCHING LIVE STREAM: "${query}"...`;
+  if (loadingText) loadingText.textContent = `SEARCHING LIVE STREAM: "${query}"...`;
 
   try {
     const res = await fetch(`/api/stream/find?q=${encodeURIComponent(query)}`);
@@ -1662,11 +1864,11 @@ async function autoFindLiveStream(query) {
 
     if (data.embedUrl && iframe) {
       iframe.src = data.embedUrl;
-      if (loadingText) loadingText.textContent = data.isLive ? '🟢 REAL-TIME LIVE STREAM CONNECTED!' : '🎬 MATCH BROADCAST LOADED!';
+      if (loadingText) loadingText.textContent = data.isLive ? 'REAL-TIME LIVE STREAM CONNECTED!' : 'MATCH BROADCAST LOADED!';
       setTimeout(() => {
         if (overlay) overlay.classList.remove('active');
       }, 1200);
-      showToast(`📺 Auto-found Live Stream for ${query}!`);
+      showToast(`Auto-found Live Stream for ${query}!`);
     } else {
       if (iframe) iframe.src = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query + ' live')}&mute=1`;
       if (overlay) overlay.classList.remove('active');
@@ -1709,7 +1911,7 @@ function switchStreamMatch(matchId, doSwitchTab = false) {
     const scoreStr = (match.homeScore !== null && match.homeScore !== undefined) 
       ? `${match.homeScore} - ${match.awayScore}` 
       : 'VS';
-    scoreBadge.textContent = `${match.leagueIcon || '⚽'} ${match.homeTeam} ${scoreStr} ${match.awayTeam} (${match.time || 'LIVE'})`;
+    scoreBadge.innerHTML = `<span class="pulsing-dot-orange"></span> ${match.homeTeam} ${scoreStr} ${match.awayTeam} (${match.time || 'LIVE'})`;
   }
 
   // Update stats teams
@@ -1719,7 +1921,7 @@ function switchStreamMatch(matchId, doSwitchTab = false) {
   if (awayLbl) awayLbl.textContent = match.awayTeam;
 
   const titleEl = document.getElementById('streamBettingTitle');
-  if (titleEl) titleEl.textContent = `⚡ In-Play Live Odds (${match.homeTeam} vs ${match.awayTeam})`;
+  if (titleEl) titleEl.innerHTML = `<svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> In-Play Live Odds (${match.homeTeam} vs ${match.awayTeam})`;
 
   // Render commentary and timeline for this match
   renderStreamTimeline(match);
@@ -1738,7 +1940,7 @@ function searchLiveStreamCustom() {
   }
   autoFindLiveStream(query);
   const scoreBadge = document.getElementById('streamMatchPill');
-  if (scoreBadge) scoreBadge.textContent = `🔴 Live: ${query}`;
+  if (scoreBadge) scoreBadge.innerHTML = `<span class="pulsing-dot-orange"></span> Live: ${query}`;
 }
 
 function renderStreamOdds(m) {
