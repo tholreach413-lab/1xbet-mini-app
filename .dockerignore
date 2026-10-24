@@ -1,0 +1,5 @@
+node_modules
+npm-debug.log
+cloudflared.exe
+.git
+.env.local
