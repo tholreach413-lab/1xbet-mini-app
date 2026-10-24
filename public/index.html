@@ -155,14 +155,38 @@
           <button class="btn-boost-action" onclick="loadExpressOfDay()">Add Express</button>
         </div>
 
-        <!-- Matches List -->
+        <!-- LiveScore-Style Controls & Search Bar -->
+        <div class="livescore-toolbar">
+          <div class="livescore-filter-tabs" id="liveScoreFilterTabs">
+            <button class="ls-filter-btn active" data-filter="all" onclick="setLiveScoreFilter('all')">🔥 All</button>
+            <button class="ls-filter-btn live" data-filter="live" onclick="setLiveScoreFilter('live')">
+              <span class="pulse-dot-red"></span> Live Now
+            </button>
+            <button class="ls-filter-btn" data-filter="top" onclick="setLiveScoreFilter('top')">⭐ Top Leagues</button>
+            <button class="ls-filter-btn" data-filter="today" onclick="setLiveScoreFilter('today')">📅 Today</button>
+            <button class="ls-filter-btn" data-filter="tomorrow" onclick="setLiveScoreFilter('tomorrow')">⏭️ Tomorrow</button>
+          </div>
+          <div class="livescore-search-wrap">
+            <input type="text" id="matchLiveSearchInput" class="livescore-search-input" placeholder="🔍 Search any club, team, or league (e.g. Arsenal, Madrid, Chelsea)..." oninput="onMatchSearchInput(this.value)">
+            <button class="btn-clear-search" id="btnClearSearch" onclick="clearMatchSearch()" style="display:none;">✕</button>
+          </div>
+        </div>
+
+        <!-- Matches List Heading -->
         <div class="section-heading">
-          <h3 class="heading-title" id="matchesHeading">🔴 Top Live & Upcoming Matches</h3>
-          <span class="heading-extra" id="matchCountBadge">8 Events</span>
+          <h3 class="heading-title" id="matchesHeading">🔴 Live & Upcoming Matches</h3>
+          <span class="heading-extra" id="matchCountBadge">Loading...</span>
         </div>
 
         <div class="matches-grid" id="matchesContainer">
           <!-- Dynamically Rendered by app.js -->
+        </div>
+
+        <!-- View All / Load More Action -->
+        <div class="view-all-box" id="viewAllBox">
+          <button class="btn-view-all" id="btnToggleViewAll" onclick="toggleViewAllMatches()">
+            <span id="btnViewAllText">⚡ View All Matches</span>
+          </button>
         </div>
       </section>
 

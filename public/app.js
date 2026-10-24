@@ -105,6 +105,9 @@ const STATE = {
   matches: [],
   currentTab: 'sports',
   currentSportFilter: 'all',
+  liveScoreFilter: 'all',
+  matchSearchQuery: '',
+  showAllMatches: false,
   betslip: {
     type: 'single', // 'single' or 'accumulator'
     selections: [],
@@ -241,6 +244,50 @@ function filterSport(sport) {
   renderMatches();
 }
 
+// --- LIVESCORE TOOLBAR & FILTER HANDLERS ---
+function setLiveScoreFilter(filter) {
+  triggerHaptic('selection');
+  STATE.liveScoreFilter = filter;
+  STATE.showAllMatches = false; // Reset view all on filter switch
+
+  document.querySelectorAll('.ls-filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-filter') === filter);
+  });
+
+  renderMatches();
+}
+
+function onMatchSearchInput(val) {
+  STATE.matchSearchQuery = (val || '').trim().toLowerCase();
+  const clearBtn = document.getElementById('btnClearSearch');
+  if (clearBtn) clearBtn.style.display = STATE.matchSearchQuery ? 'inline-block' : 'none';
+  renderMatches();
+}
+
+function clearMatchSearch() {
+  const input = document.getElementById('matchLiveSearchInput');
+  if (input) input.value = '';
+  STATE.matchSearchQuery = '';
+  const clearBtn = document.getElementById('btnClearSearch');
+  if (clearBtn) clearBtn.style.display = 'none';
+  renderMatches();
+}
+
+function toggleViewAllMatches() {
+  triggerHaptic('light');
+  STATE.showAllMatches = !STATE.showAllMatches;
+  renderMatches();
+}
+
+function getTeamAvatarFallback(name) {
+  const safeName = (name || 'FC').trim();
+  const parts = safeName.split(' ').filter(Boolean);
+  const initials = parts.length > 1 
+    ? (parts[0][0] + parts[1][0]).toUpperCase() 
+    : safeName.slice(0, 2).toUpperCase();
+  return `<span class="team-avatar-fallback">${initials}</span>`;
+}
+
 // --- MATCH RENDERING ---
 function renderMatches() {
   const container = document.getElementById('matchesContainer');
@@ -251,20 +298,75 @@ function renderMatches() {
     container.innerHTML = `
       <div class="empty-state">
         <div class="stream-spinner" style="margin: 0 auto 12px;"></div>
-        <div>Loading real-time matches & live odds...</div>
+        <div>Loading real-time matches from LiveScore...</div>
+      </div>
+    `;
+    const countBadge = document.getElementById('matchCountBadge');
+    if (countBadge) countBadge.textContent = '0 Events';
+    return;
+  }
+
+  // 1. Sport filter
+  let filtered = STATE.currentSportFilter === 'all'
+    ? matches
+    : matches.filter(m => m.sport === STATE.currentSportFilter);
+
+  // 2. LiveScore Category / Date filter
+  const lsFilter = STATE.liveScoreFilter || 'all';
+  if (lsFilter === 'live') {
+    filtered = filtered.filter(m => m.isLive);
+  } else if (lsFilter === 'top') {
+    filtered = filtered.filter(m => m.isTop || m.isLive);
+  } else if (lsFilter === 'today') {
+    filtered = filtered.filter(m => m.day === 'Today' || m.isLive);
+  } else if (lsFilter === 'tomorrow') {
+    filtered = filtered.filter(m => m.day === 'Tomorrow');
+  }
+
+  // 3. Search query filter
+  if (STATE.matchSearchQuery) {
+    const q = STATE.matchSearchQuery;
+    filtered = filtered.filter(m => 
+      (m.homeTeam && m.homeTeam.toLowerCase().includes(q)) ||
+      (m.awayTeam && m.awayTeam.toLowerCase().includes(q)) ||
+      (m.league && m.league.toLowerCase().includes(q)) ||
+      (m.country && m.country.toLowerCase().includes(q))
+    );
+  }
+
+  const countBadge = document.getElementById('matchCountBadge');
+  if (countBadge) {
+    countBadge.textContent = `${filtered.length} Matches`;
+  }
+
+  // 4. Smooth Batching / View All (prevent DOM lag on 1000+ matches)
+  const viewAllBox = document.getElementById('viewAllBox');
+  const viewAllText = document.getElementById('btnViewAllText');
+  const BATCH_SIZE = 30;
+
+  let displayList = filtered;
+  if (!STATE.showAllMatches && filtered.length > BATCH_SIZE) {
+    displayList = filtered.slice(0, BATCH_SIZE);
+    if (viewAllBox) viewAllBox.style.display = 'block';
+    if (viewAllText) viewAllText.textContent = `⚡ View All (${filtered.length} Matches)`;
+  } else if (STATE.showAllMatches && filtered.length > BATCH_SIZE) {
+    if (viewAllBox) viewAllBox.style.display = 'block';
+    if (viewAllText) viewAllText.textContent = `▲ Show Less (${BATCH_SIZE} Top Matches)`;
+  } else {
+    if (viewAllBox) viewAllBox.style.display = 'none';
+  }
+
+  if (displayList.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <div>No matches found matching your filter. Try another tab or clear search!</div>
       </div>
     `;
     return;
   }
 
-  const filtered = STATE.currentSportFilter === 'all'
-    ? matches
-    : matches.filter(m => m.sport === STATE.currentSportFilter);
-
-  const countBadge = document.getElementById('matchCountBadge');
-  if (countBadge) countBadge.textContent = `${filtered.length} Events`;
-
-  container.innerHTML = filtered.map(m => generateMatchCardHTML(m)).join('');
+  container.innerHTML = displayList.map(m => generateMatchCardHTML(m)).join('');
 }
 
 function renderLiveMatches() {
@@ -291,23 +393,29 @@ function generateMatchCardHTML(m) {
 
   const statusBadge = m.isLive
     ? `<span class="match-status-badge live"><span class="pulsing-dot"></span> LIVE ${m.time}</span>`
-    : `<span class="match-status-badge upcoming">🕒 ${m.time}</span>`;
+    : `<span class="match-status-badge upcoming">${m.day === 'Tomorrow' ? 'Tomorrow ' : ''}🕒 ${m.time}</span>`;
+
+  const fallbackHome = getTeamAvatarFallback(m.homeTeam).replace(/"/g, '&quot;');
+  const fallbackAway = getTeamAvatarFallback(m.awayTeam).replace(/"/g, '&quot;');
 
   const homeLogoHTML = m.homeLogo 
-    ? `<img src="${m.homeLogo}" class="team-crest" alt="${m.homeTeam}" onerror="this.style.display='none'">` 
-    : `<span class="team-flag">${m.sport === 'basketball' ? '🏀' : '⚽'}</span>`;
+    ? `<img src="${m.homeLogo}" class="team-crest" alt="${m.homeTeam}" loading="lazy" onerror="this.outerHTML='${fallbackHome}'">` 
+    : getTeamAvatarFallback(m.homeTeam);
 
   const awayLogoHTML = m.awayLogo 
-    ? `<img src="${m.awayLogo}" class="team-crest" alt="${m.awayTeam}" onerror="this.style.display='none'">` 
-    : `<span class="team-flag">${m.sport === 'basketball' ? '🏀' : '⚽'}</span>`;
+    ? `<img src="${m.awayLogo}" class="team-crest" alt="${m.awayTeam}" loading="lazy" onerror="this.outerHTML='${fallbackAway}'">` 
+    : getTeamAvatarFallback(m.awayTeam);
 
   return `
-    <div class="match-card" id="card_${m.id}">
+    <div class="match-card ${m.isLive ? 'is-live-card' : ''}" id="card_${m.id}">
       <div class="match-header-row">
-        <span class="match-league">${m.leagueIcon || '🏆'} ${m.league}</span>
+        <span class="match-league">
+          <span class="league-flag">${m.country ? '🌐' : '⚽'}</span>
+          <span class="league-name-text">${m.league}</span>
+        </span>
         <div class="match-header-actions">
-          <button class="btn-live-stream-badge ${m.isLive ? 'is-live' : ''}" onclick="watchMatchStream('${m.id}')">
-            <span class="stream-pulse-dot"></span> 📺 Watch Live
+          <button class="btn-live-stream-badge ${m.isLive ? 'is-live' : ''}" onclick="watchMatchStream('${m.id}')" title="Watch live video broadcast">
+            <span class="stream-pulse-dot"></span> 📺 Live Stream
           </button>
           ${statusBadge}
         </div>
@@ -316,16 +424,16 @@ function generateMatchCardHTML(m) {
         <div class="team-row">
           <div class="team-info">
             ${homeLogoHTML}
-            <span>${m.homeTeam}</span>
+            <span class="team-name-text">${m.homeTeam}</span>
           </div>
-          ${m.homeScore !== null && m.homeScore !== undefined ? `<span class="team-score">${m.homeScore}</span>` : ''}
+          ${m.homeScore !== null && m.homeScore !== undefined ? `<span class="team-score ${m.isLive ? 'score-live' : ''}">${m.homeScore}</span>` : '<span class="team-score-dash">-</span>'}
         </div>
         <div class="team-row">
           <div class="team-info">
             ${awayLogoHTML}
-            <span>${m.awayTeam}</span>
+            <span class="team-name-text">${m.awayTeam}</span>
           </div>
-          ${m.awayScore !== null && m.awayScore !== undefined ? `<span class="team-score">${m.awayScore}</span>` : ''}
+          ${m.awayScore !== null && m.awayScore !== undefined ? `<span class="team-score ${m.isLive ? 'score-live' : ''}">${m.awayScore}</span>` : '<span class="team-score-dash">-</span>'}
         </div>
       </div>
       <div class="odds-row">
@@ -351,11 +459,11 @@ function generateMatchCardHTML(m) {
       </div>
       <div class="odds-row secondary-odds">
         <button class="btn-odd ${isSelected('O25') ? 'selected' : ''}" id="odd_${m.id}_O25" onclick="toggleOddSelection('${m.id}', 'O25', 'Over 2.5 Goals', ${m.odds.over25})">
-          <span class="odd-type">Total Over 2.5</span>
+          <span class="odd-type">Over 2.5</span>
           <span class="odd-val">${m.odds.over25.toFixed(2)}</span>
         </button>
         <button class="btn-odd ${isSelected('U25') ? 'selected' : ''}" id="odd_${m.id}_U25" onclick="toggleOddSelection('${m.id}', 'U25', 'Under 2.5 Goals', ${m.odds.under25})">
-          <span class="odd-type">Total Under 2.5</span>
+          <span class="odd-type">Under 2.5</span>
           <span class="odd-val">${m.odds.under25.toFixed(2)}</span>
         </button>
       </div>

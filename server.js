@@ -51,12 +51,16 @@ let cachedMatches = [];
 let lastMatchesFetch = 0;
 
 async function fetchFromLiveScore() {
-  const d = new Date();
-  const ymd = d.toISOString().slice(0, 10).replace(/-/g, '');
+  const now = new Date();
+  const dToday = new Date(now.getTime());
+  const dTomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const ymdToday = dToday.toISOString().slice(0, 10).replace(/-/g, '');
+  const ymdTomorrow = dTomorrow.toISOString().slice(0, 10).replace(/-/g, '');
   
-  const [liveRes, todayRes] = await Promise.allSettled([
+  const [liveRes, todayRes, tomorrowRes] = await Promise.allSettled([
     fetch('https://prod-public-api.livescore.com/v1/api/app/live/soccer/0.00', { headers: { 'User-Agent': 'Mozilla/5.0' } }),
-    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymd}/0.00`, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymdToday}/0.00`, { headers: { 'User-Agent': 'Mozilla/5.0' } }),
+    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymdTomorrow}/0.00`, { headers: { 'User-Agent': 'Mozilla/5.0' } })
   ]);
 
   const matches = [];
@@ -66,9 +70,9 @@ async function fetchFromLiveScore() {
     'UEFA Champions League', 'UEFA Europa League', 'FA Cup', 'EFL Cup', 'Copa del Rey'
   ];
 
-  function parseStages(stages, isLiveForced = false) {
+  function parseStages(stages, isLiveForced = false, dayLabel = 'Today') {
     for (const stage of stages || []) {
-      const leagueName = stage.Snm || 'Football';
+      const rawLeague = stage.Snm || 'Football';
       const country = stage.Cnm || '';
       for (const ev of stage.Events || []) {
         if (seenIds.has(ev.Eid)) continue;
@@ -80,15 +84,18 @@ async function fetchFromLiveScore() {
         const awayImg = ev.T2?.[0]?.Img ? `https://lsm-static-prod.livescore.com/medium/${ev.T2[0].Img}` : '';
         const timeDisplay = ev.Eps || 'VS';
         const isLive = isLiveForced || ['1H', '2H', 'HT', 'ET', 'P', 'BT'].includes(ev.Eps) || (typeof ev.Eps === 'string' && ev.Eps.includes("'"));
-        const isTop = TOP_LEAGUES.some(l => leagueName.toLowerCase().includes(l.toLowerCase()));
+        const isTop = TOP_LEAGUES.some(l => rawLeague.toLowerCase().includes(l.toLowerCase()));
 
         matches.push({
           id: 'ls_' + ev.Eid,
           sport: 'football',
-          league: country ? `${country} - ${leagueName}` : leagueName,
+          league: country ? `${country} - ${rawLeague}` : rawLeague,
+          rawLeague: rawLeague,
+          country: country,
           leagueIcon: '⚽',
           isLive,
           isTop,
+          day: isLive ? 'LIVE' : dayLabel,
           time: timeDisplay,
           homeTeam: homeName,
           homeLogo: homeImg,
@@ -111,14 +118,21 @@ async function fetchFromLiveScore() {
   if (liveRes.status === 'fulfilled' && liveRes.value.ok) {
     try {
       const liveData = await liveRes.value.json();
-      parseStages(liveData.Stages, true);
+      parseStages(liveData.Stages, true, 'LIVE');
     } catch (_) {}
   }
 
   if (todayRes.status === 'fulfilled' && todayRes.value.ok) {
     try {
       const todayData = await todayRes.value.json();
-      parseStages(todayData.Stages, false);
+      parseStages(todayData.Stages, false, 'Today');
+    } catch (_) {}
+  }
+
+  if (tomorrowRes.status === 'fulfilled' && tomorrowRes.value.ok) {
+    try {
+      const tomorrowData = await tomorrowRes.value.json();
+      parseStages(tomorrowData.Stages, false, 'Tomorrow');
     } catch (_) {}
   }
 
