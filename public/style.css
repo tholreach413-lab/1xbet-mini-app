@@ -650,6 +650,14 @@ body {
   font-size: 16px;
 }
 
+.team-crest {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
 .team-score {
   font-family: 'Outfit', sans-serif;
   font-size: 16px;

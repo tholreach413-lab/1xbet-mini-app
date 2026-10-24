@@ -187,22 +187,9 @@
       <section class="tab-content" id="tabStream">
         <div class="stream-page-container">
           <!-- Stream Header -->
-          <div class="stream-channel-selector">
-            <button class="stream-chan-btn active" onclick="switchStreamMatch('m_1')">
-              <span class="live-dot-mini"></span> ⚽ Real Madrid vs Man City
-            </button>
-            <button class="stream-chan-btn" onclick="switchStreamMatch('m_2')">
-              <span class="live-dot-mini"></span> ⚽ Arsenal vs Liverpool
-            </button>
-            <button class="stream-chan-btn" onclick="switchStreamMatch('m_3')">
-              <span class="live-dot-mini"></span> 🏀 Lakers vs Celtics
-            </button>
-            <button class="stream-chan-btn" onclick="switchStreamMatch('m_4')">
-              <span class="live-dot-mini"></span> 🎾 Djokovic vs Alcaraz
-            </button>
-            <button class="stream-chan-btn" onclick="switchStreamMatch('m_6')">
-              <span class="live-dot-mini"></span> 🎮 FaZe vs NAVI
-            </button>
+          <!-- Dynamic Channel Selector (Auto-Populated from Real Active Matches) -->
+          <div class="stream-channel-selector" id="streamChannelSelector">
+            <!-- Dynamically populated from real live matches -->
           </div>
 
           <!-- Live Stream Search Bar (Auto-Finds Any Game in Real Time) -->
@@ -217,14 +204,14 @@
           <div class="stream-player-card">
             <div class="stream-video-wrapper" id="streamVideoWrapper">
               <iframe id="liveStreamIframe" 
-                src="https://www.youtube.com/embed/5ecHB8Ygo8k?autoplay=1&mute=0&playsinline=1" 
+                src="" 
                 frameborder="0" 
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
                 allowfullscreen>
               </iframe>
-              <div class="stream-loading-overlay" id="streamLoadingOverlay">
+              <div class="stream-loading-overlay active" id="streamLoadingOverlay">
                 <span class="stream-spinner"></span>
-                <span class="stream-load-text" id="streamLoadingText">CONNECTING REAL-TIME LIVE STREAM...</span>
+                <span class="stream-load-text" id="streamLoadingText">AUTO-CONNECTING REAL-TIME LIVE STREAM...</span>
               </div>
               <!-- Video Overlays -->
               <div class="video-overlay-top">
@@ -232,7 +219,7 @@
                   <span class="pulsing-dot"></span> 1xTV LIVE
                 </div>
                 <div class="stream-match-pill" id="streamMatchPill">
-                  ⚽ Real Madrid 2 - 1 Man City (76')
+                  🔴 Synchronizing match broadcast...
                 </div>
                 <span class="stream-quality-tag">1080p 60fps</span>
               </div>
@@ -242,11 +229,11 @@
           <!-- Live In-Play Betting Under Video -->
           <div class="stream-betting-box">
             <div class="stream-betting-header">
-              <span class="stream-betting-title" id="streamBettingTitle">⚡ In-Play Live Odds (Real Madrid vs Man City)</span>
+              <span class="stream-betting-title" id="streamBettingTitle">⚡ In-Play Live Odds</span>
               <span class="stream-live-indicator">LIVE BETTING ACTIVE</span>
             </div>
             <div class="odds-row" id="streamOddsRow">
-              <!-- Dynamically populated odds -->
+              <!-- Dynamically populated odds from active match -->
             </div>
           </div>
 
@@ -255,26 +242,26 @@
             <div class="stats-title">📊 Live Match Statistics</div>
             <div class="stat-bar-group">
               <div class="stat-labels">
-                <span id="statHomeTeam">Real Madrid</span>
+                <span id="statHomeTeam">Home</span>
                 <span>Ball Possession</span>
-                <span id="statAwayTeam">Man City</span>
+                <span id="statAwayTeam">Away</span>
               </div>
               <div class="stat-progress-bar">
-                <div class="progress-left" id="progressLeft" style="width: 56%;">56%</div>
-                <div class="progress-right" id="progressRight" style="width: 44%;">44%</div>
+                <div class="progress-left" id="progressLeft" style="width: 54%;">54%</div>
+                <div class="progress-right" id="progressRight" style="width: 46%;">46%</div>
               </div>
             </div>
             <div class="stat-counters-row">
               <div class="stat-box">
-                <span class="stat-num">8 - 5</span>
+                <span class="stat-num" id="statShots">7 - 5</span>
                 <span class="stat-name">Shots on Target</span>
               </div>
               <div class="stat-box">
-                <span class="stat-num">6 - 3</span>
+                <span class="stat-num" id="statCorners">5 - 3</span>
                 <span class="stat-name">Corner Kicks</span>
               </div>
               <div class="stat-box">
-                <span class="stat-num">1 - 2</span>
+                <span class="stat-num" id="statCards">1 - 2</span>
                 <span class="stat-name">Yellow Cards</span>
               </div>
             </div>
@@ -284,26 +271,7 @@
           <div class="stream-timeline-card">
             <div class="timeline-title">⚡ Live Match Events</div>
             <div class="timeline-events-list" id="streamEventsList">
-              <div class="timeline-event">
-                <span class="event-time">76'</span>
-                <span class="event-icon">⚽</span>
-                <span class="event-desc"><strong>GOAL!</strong> Jude Bellingham rockets a shot into the top corner! (2 - 1)</span>
-              </div>
-              <div class="timeline-event">
-                <span class="event-time">64'</span>
-                <span class="event-icon">🟨</span>
-                <span class="event-desc">Yellow card given to Rodri for tactical foul.</span>
-              </div>
-              <div class="timeline-event">
-                <span class="event-time">52'</span>
-                <span class="event-icon">⚽</span>
-                <span class="event-desc"><strong>GOAL!</strong> Erling Haaland equalizes with close-range finish. (1 - 1)</span>
-              </div>
-              <div class="timeline-event">
-                <span class="event-time">28'</span>
-                <span class="event-icon">⚽</span>
-                <span class="event-desc"><strong>GOAL!</strong> Vinicius Jr cuts inside to score the opener! (1 - 0)</span>
-              </div>
+              <!-- Dynamically populated commentary from active match -->
             </div>
           </div>
 

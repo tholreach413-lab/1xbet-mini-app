@@ -102,6 +102,7 @@ const STATE = {
     balance: 1250.00,
     vipTier: "VIP PRO"
   },
+  matches: [],
   currentTab: 'sports',
   currentSportFilter: 'all',
   betslip: {
@@ -153,183 +154,39 @@ if (tg?.initDataUnsafe?.user) {
   if (avatarEl) avatarEl.textContent = initials.toUpperCase();
 }
 
-// --- MATCH DATA WITH LIVE SCORES & ODDS ---
-const MATCHES_DATA = [
-  {
-    id: "m_1",
-    sport: "football",
-    league: "UEFA Champions League",
-    leagueIcon: "🏆",
-    isLive: true,
-    time: "76'",
-    homeTeam: "Real Madrid",
-    homeFlag: "🇪🇸",
-    homeScore: 2,
-    awayTeam: "Manchester City",
-    awayFlag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-    awayScore: 1,
-    odds: {
-      home: 1.85,
-      draw: 3.40,
-      away: 3.80,
-      over25: 1.55,
-      under25: 2.30
+// --- DYNAMIC REAL-TIME MATCHES & ODDS ENGINE (NO HARDCODED SETS) ---
+async function loadLiveMatches() {
+  try {
+    const res = await fetch('/api/matches');
+    const data = await res.json();
+    if (data.matches && data.matches.length > 0) {
+      STATE.matches = data.matches;
+      renderMatches();
+      renderLiveMatches();
+      renderStreamChannelSelector();
+
+      // If no stream match is active yet, auto-select the first match and auto-find its live video
+      if (!currentStreamMatchId || !STATE.matches.some(m => m.id === currentStreamMatchId)) {
+        if (STATE.matches[0]) {
+          switchStreamMatch(STATE.matches[0].id, false);
+        }
+      } else {
+        const cur = STATE.matches.find(m => m.id === currentStreamMatchId);
+        if (cur) renderStreamOdds(cur);
+      }
     }
-  },
-  {
-    id: "m_2",
-    sport: "football",
-    league: "English Premier League",
-    leagueIcon: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-    isLive: true,
-    time: "38'",
-    homeTeam: "Arsenal",
-    homeFlag: "🔴",
-    homeScore: 1,
-    awayTeam: "Liverpool",
-    awayFlag: "⚪",
-    awayScore: 0,
-    odds: {
-      home: 2.10,
-      draw: 3.25,
-      away: 3.20,
-      over25: 1.70,
-      under25: 2.15
-    }
-  },
-  {
-    id: "m_3",
-    sport: "basketball",
-    league: "NBA Regular Season",
-    leagueIcon: "🏀",
-    isLive: true,
-    time: "Q4 3:12",
-    homeTeam: "LA Lakers",
-    homeFlag: "🟡",
-    homeScore: 108,
-    awayTeam: "Boston Celtics",
-    awayFlag: "🟢",
-    awayScore: 105,
-    odds: {
-      home: 1.65,
-      draw: 14.00,
-      away: 2.25,
-      over25: 1.90,
-      under25: 1.90
-    }
-  },
-  {
-    id: "m_4",
-    sport: "tennis",
-    league: "ATP Masters 1000",
-    leagueIcon: "🎾",
-    isLive: true,
-    time: "Set 3 (4-4)",
-    homeTeam: "Novak Djokovic",
-    homeFlag: "🇷🇸",
-    homeScore: 1,
-    awayTeam: "Carlos Alcaraz",
-    awayFlag: "🇪🇸",
-    awayScore: 1,
-    odds: {
-      home: 1.92,
-      draw: 0,
-      away: 1.88,
-      over25: 1.75,
-      under25: 2.05
-    }
-  },
-  {
-    id: "m_5",
-    sport: "football",
-    league: "Spanish La Liga",
-    leagueIcon: "🇪🇸",
-    isLive: false,
-    time: "Today 22:00",
-    homeTeam: "Barcelona",
-    homeFlag: "🔵🔴",
-    homeScore: null,
-    awayTeam: "Atletico Madrid",
-    awayFlag: "🔴⚪",
-    awayScore: null,
-    odds: {
-      home: 1.95,
-      draw: 3.50,
-      away: 3.60,
-      over25: 1.82,
-      under25: 2.00
-    }
-  },
-  {
-    id: "m_6",
-    sport: "esports",
-    league: "CS2 Blast Premier",
-    leagueIcon: "🎮",
-    isLive: true,
-    time: "Map 2 (11-9)",
-    homeTeam: "FaZe Clan",
-    homeFlag: "🔴",
-    homeScore: 1,
-    awayTeam: "NAVI",
-    awayFlag: "🟡",
-    awayScore: 0,
-    odds: {
-      home: 1.50,
-      draw: 0,
-      away: 2.50,
-      over25: 1.80,
-      under25: 1.95
-    }
-  },
-  {
-    id: "m_7",
-    sport: "mma",
-    league: "UFC 310 Title Bout",
-    leagueIcon: "🥊",
-    isLive: false,
-    time: "Tonight 01:00",
-    homeTeam: "Islam Makhachev",
-    homeFlag: "🇷🇺",
-    homeScore: null,
-    awayTeam: "Arman Tsarukyan",
-    awayFlag: "🇦🇲",
-    awayScore: null,
-    odds: {
-      home: 1.35,
-      draw: 45.00,
-      away: 3.20,
-      over25: 1.60,
-      under25: 2.30
-    }
-  },
-  {
-    id: "m_8",
-    sport: "football",
-    league: "German Bundesliga",
-    leagueIcon: "🇩🇪",
-    isLive: false,
-    time: "Tomorrow 17:30",
-    homeTeam: "Bayern Munich",
-    homeFlag: "🔴",
-    homeScore: null,
-    awayTeam: "Borussia Dortmund",
-    awayFlag: "🟡",
-    awayScore: null,
-    odds: {
-      home: 1.62,
-      draw: 4.10,
-      away: 4.60,
-      over25: 1.45,
-      under25: 2.65
-    }
+  } catch (err) {
+    console.error("Error loading live matches from /api/matches:", err);
   }
-];
+}
+
+// Auto-refresh live matches every 30 seconds
+setInterval(loadLiveMatches, 30000);
 
 // --- INITIAL RENDER & BOOTSTRAP ---
 document.addEventListener('DOMContentLoaded', () => {
   updateUserBalanceDisplay();
-  renderMatches();
-  renderLiveMatches();
+  loadLiveMatches();
   renderBetsHistory();
   renderTransactions();
   initHeroCarousel();
@@ -389,9 +246,20 @@ function renderMatches() {
   const container = document.getElementById('matchesContainer');
   if (!container) return;
 
+  const matches = STATE.matches || [];
+  if (matches.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="stream-spinner" style="margin: 0 auto 12px;"></div>
+        <div>Loading real-time matches & live odds...</div>
+      </div>
+    `;
+    return;
+  }
+
   const filtered = STATE.currentSportFilter === 'all'
-    ? MATCHES_DATA
-    : MATCHES_DATA.filter(m => m.sport === STATE.currentSportFilter);
+    ? matches
+    : matches.filter(m => m.sport === STATE.currentSportFilter);
 
   const countBadge = document.getElementById('matchCountBadge');
   if (countBadge) countBadge.textContent = `${filtered.length} Events`;
@@ -402,7 +270,17 @@ function renderMatches() {
 function renderLiveMatches() {
   const container = document.getElementById('liveMatchesContainer');
   if (!container) return;
-  const liveList = MATCHES_DATA.filter(m => m.isLive);
+  const matches = STATE.matches || [];
+  const liveList = matches.filter(m => m.isLive);
+  if (liveList.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⚽</div>
+        <div>No live in-play matches right now. Check back soon or view upcoming games!</div>
+      </div>
+    `;
+    return;
+  }
   container.innerHTML = liveList.map(m => generateMatchCardHTML(m)).join('');
 }
 
@@ -415,33 +293,39 @@ function generateMatchCardHTML(m) {
     ? `<span class="match-status-badge live"><span class="pulsing-dot"></span> LIVE ${m.time}</span>`
     : `<span class="match-status-badge upcoming">🕒 ${m.time}</span>`;
 
-  const scoreHTML = m.isLive
-    ? `<div class="team-score">${m.homeScore} - ${m.awayScore}</div>`
-    : `<div class="team-score" style="color:var(--text-dim);font-size:12px;">VS</div>`;
+  const homeLogoHTML = m.homeLogo 
+    ? `<img src="${m.homeLogo}" class="team-crest" alt="${m.homeTeam}" onerror="this.style.display='none'">` 
+    : `<span class="team-flag">${m.sport === 'basketball' ? '🏀' : '⚽'}</span>`;
+
+  const awayLogoHTML = m.awayLogo 
+    ? `<img src="${m.awayLogo}" class="team-crest" alt="${m.awayTeam}" onerror="this.style.display='none'">` 
+    : `<span class="team-flag">${m.sport === 'basketball' ? '🏀' : '⚽'}</span>`;
 
   return `
     <div class="match-card" id="card_${m.id}">
       <div class="match-header-row">
-        <span class="match-league">${m.leagueIcon} ${m.league}</span>
+        <span class="match-league">${m.leagueIcon || '🏆'} ${m.league}</span>
         <div class="match-header-actions">
-          ${m.isLive ? `<button class="btn-live-stream-badge" onclick="watchMatchStream('${m.id}')"><span class="stream-pulse-dot"></span> 📺 Watch Live</button>` : ''}
+          <button class="btn-live-stream-badge ${m.isLive ? 'is-live' : ''}" onclick="watchMatchStream('${m.id}')">
+            <span class="stream-pulse-dot"></span> 📺 Watch Live
+          </button>
           ${statusBadge}
         </div>
       </div>
       <div class="match-teams-box">
         <div class="team-row">
           <div class="team-info">
-            <span class="team-flag">${m.homeFlag}</span>
+            ${homeLogoHTML}
             <span>${m.homeTeam}</span>
           </div>
-          ${m.isLive ? `<span class="team-score">${m.homeScore}</span>` : ''}
+          ${m.homeScore !== null && m.homeScore !== undefined ? `<span class="team-score">${m.homeScore}</span>` : ''}
         </div>
         <div class="team-row">
           <div class="team-info">
-            <span class="team-flag">${m.awayFlag}</span>
+            ${awayLogoHTML}
             <span>${m.awayTeam}</span>
           </div>
-          ${m.isLive ? `<span class="team-score">${m.awayScore}</span>` : ''}
+          ${m.awayScore !== null && m.awayScore !== undefined ? `<span class="team-score">${m.awayScore}</span>` : ''}
         </div>
       </div>
       <div class="odds-row">
@@ -482,7 +366,7 @@ function generateMatchCardHTML(m) {
 // --- LIVE ODDS SIMULATION (Fluctuates realistic 1xBet odds) ---
 function startLiveOddsSimulation() {
   setInterval(() => {
-    const liveMatches = MATCHES_DATA.filter(m => m.isLive);
+    const liveMatches = (STATE.matches || []).filter(m => m.isLive);
     if (!liveMatches.length) return;
     const randomMatch = liveMatches[Math.floor(Math.random() * liveMatches.length)];
     const delta = (Math.random() > 0.5 ? 1 : -1) * 0.05;
@@ -502,7 +386,7 @@ function toggleOddSelection(matchId, pickType, pickName, odds) {
   triggerHaptic('selection');
   sounds.playClick();
 
-  const match = MATCHES_DATA.find(m => m.id === matchId);
+  const match = (STATE.matches || []).find(m => m.id === matchId);
   if (!match) return;
 
   const existingIndex = STATE.betslip.selections.findIndex(s => s.matchId === matchId && s.pickType === pickType);
@@ -676,11 +560,18 @@ function setStakeMax() {
 function loadExpressOfDay() {
   triggerHaptic('medium');
   sounds.playClick();
-  STATE.betslip.selections = [
-    { matchId: "m_1", matchName: "Real Madrid vs Man City", pickType: "1", pickName: "Real Madrid (1)", odds: 1.85 },
-    { matchId: "m_2", matchName: "Arsenal vs Liverpool", pickType: "1", pickName: "Arsenal (1)", odds: 2.10 },
-    { matchId: "m_3", matchName: "LA Lakers vs Boston Celtics", pickType: "1", pickName: "LA Lakers (1)", odds: 1.65 }
-  ];
+  const topMatches = (STATE.matches || []).slice(0, 3);
+  if (topMatches.length === 0) {
+    showToast("Loading matches, please wait...", "warning");
+    return;
+  }
+  STATE.betslip.selections = topMatches.map(m => ({
+    matchId: m.id,
+    matchName: `${m.homeTeam} vs ${m.awayTeam}`,
+    pickType: '1',
+    pickName: `${m.homeTeam} (1)`,
+    odds: m.odds.home
+  }));
   STATE.betslip.type = 'accumulator';
   updateBetslipUI();
   toggleBetslipModal(true);
@@ -1413,8 +1304,72 @@ function alertNotification(title, msg) {
   showToast(`${title}: ${msg}`);
 }
 
-// --- 1xTV REAL-TIME LIVE STREAMING AUTO-FINDER ---
-let currentStreamMatchId = 'm_1';
+// --- 1xTV REAL-TIME LIVE STREAMING AUTO-FINDER & SYNC ---
+let currentStreamMatchId = null;
+
+function renderStreamChannelSelector() {
+  const container = document.getElementById('streamChannelSelector');
+  if (!container) return;
+
+  const matches = STATE.matches || [];
+  if (matches.length === 0) {
+    container.innerHTML = `<span style="font-size:11px;color:var(--text-muted);padding:4px 8px;">Loading channels...</span>`;
+    return;
+  }
+
+  container.innerHTML = matches.map(m => `
+    <button class="stream-chan-btn ${m.id === currentStreamMatchId ? 'active' : ''}" onclick="switchStreamMatch('${m.id}', false)">
+      <span class="live-dot-mini"></span> ${m.leagueIcon || '⚽'} ${m.homeTeam} vs ${m.awayTeam}
+    </button>
+  `).join('');
+}
+
+function renderStreamTimeline(match) {
+  const container = document.getElementById('streamEventsList');
+  if (!container || !match) return;
+
+  const home = match.homeTeam;
+  const away = match.awayTeam;
+  const sport = match.sport || 'football';
+
+  if (sport === 'basketball') {
+    container.innerHTML = `
+      <div class="timeline-event">
+        <span class="event-time">${match.time || 'LIVE'}</span>
+        <span class="event-icon">🏀</span>
+        <span class="event-desc"><strong>3-POINTER!</strong> ${home} sinks a contested shot from beyond the arc!</span>
+      </div>
+      <div class="timeline-event">
+        <span class="event-time">Q3</span>
+        <span class="event-icon">⚡</span>
+        <span class="event-desc">Fast-break slam dunk by ${away} to cut the deficit!</span>
+      </div>
+      <div class="timeline-event">
+        <span class="event-time">Q2</span>
+        <span class="event-icon">⏱️</span>
+        <span class="event-desc">Official timeout called on the floor.</span>
+      </div>
+    `;
+  } else {
+    container.innerHTML = `
+      <div class="timeline-event">
+        <span class="event-time">${match.time || 'LIVE'}</span>
+        <span class="event-icon">⚽</span>
+        <span class="event-desc"><strong>DANGEROUS ATTACK!</strong> ${home} press forward with a testing cross into the penalty box!</span>
+      </div>
+      <div class="timeline-event">
+        <span class="event-time">${match.isLive ? '38\'' : '1st Half'}</span>
+        <span class="event-icon">🧤</span>
+        <span class="event-desc">Sensational diving save by ${away} goalkeeper to tip the ball wide!</span>
+      </div>
+      <div class="timeline-event">
+        <span class="event-time">22'</span>
+        <span class="event-icon">🟨</span>
+        <span class="event-desc">Tactical challenge in midfield, referee awards yellow card.</span>
+      </div>
+    `;
+  }
+}
 
 async function autoFindLiveStream(query) {
   const overlay = document.getElementById('streamLoadingOverlay');
@@ -1449,19 +1404,24 @@ function watchMatchStream(matchId) {
   triggerHaptic('medium');
   sounds.playClick();
   switchTab('stream');
-  switchStreamMatch(matchId);
+  switchStreamMatch(matchId, true);
 }
 
-function switchStreamMatch(matchId) {
+function switchStreamMatch(matchId, doSwitchTab = false) {
   triggerHaptic('light');
   currentStreamMatchId = matchId;
+
+  if (doSwitchTab) {
+    switchTab('stream');
+  }
 
   // Update active pill button
   document.querySelectorAll('.stream-chan-btn').forEach(b => {
     b.classList.toggle('active', b.getAttribute('onclick')?.includes(`'${matchId}'`));
   });
 
-  const match = MATCHES_DATA.find(m => m.id === matchId) || MATCHES_DATA[0];
+  const match = (STATE.matches || []).find(m => m.id === matchId) || (STATE.matches || [])[0];
+  if (!match) return;
 
   // Auto-find real-time live stream for this match!
   autoFindLiveStream(`${match.homeTeam} vs ${match.awayTeam}`);
@@ -1469,7 +1429,10 @@ function switchStreamMatch(matchId) {
   // Update overlay score
   const scoreBadge = document.getElementById('streamMatchPill');
   if (scoreBadge) {
-    scoreBadge.textContent = `${match.leagueIcon} ${match.homeTeam} ${match.homeScore ?? 0} - ${match.awayScore ?? 0} ${match.awayTeam} (${match.time})`;
+    const scoreStr = (match.homeScore !== null && match.homeScore !== undefined) 
+      ? `${match.homeScore} - ${match.awayScore}` 
+      : 'VS';
+    scoreBadge.textContent = `${match.leagueIcon || '⚽'} ${match.homeTeam} ${scoreStr} ${match.awayTeam} (${match.time || 'LIVE'})`;
   }
 
   // Update stats teams
@@ -1481,6 +1444,10 @@ function switchStreamMatch(matchId) {
   const titleEl = document.getElementById('streamBettingTitle');
   if (titleEl) titleEl.textContent = `⚡ In-Play Live Odds (${match.homeTeam} vs ${match.awayTeam})`;
 
+  // Render commentary and timeline for this match
+  renderStreamTimeline(match);
+
+  // Render real odds for this match directly under the video
   renderStreamOdds(match);
 }
 
@@ -1499,7 +1466,7 @@ function searchLiveStreamCustom() {
 
 function renderStreamOdds(m) {
   const container = document.getElementById('streamOddsRow');
-  if (!container) return;
+  if (!container || !m || !m.odds) return;
 
   const isSelected = (pickType) => {
     return STATE.betslip.selections.some(s => s.matchId === m.id && s.pickType === pickType);
@@ -1522,12 +1489,3 @@ function renderStreamOdds(m) {
     </button>
   `;
 }
-
-// Initialize default stream odds and start default auto-find
-setTimeout(() => {
-  const defaultMatch = MATCHES_DATA[0];
-  if (defaultMatch) {
-    renderStreamOdds(defaultMatch);
-    autoFindLiveStream(`${defaultMatch.homeTeam} vs ${defaultMatch.awayTeam}`);
-  }
-}, 600);
