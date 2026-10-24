@@ -423,7 +423,10 @@ function generateMatchCardHTML(m) {
     <div class="match-card" id="card_${m.id}">
       <div class="match-header-row">
         <span class="match-league">${m.leagueIcon} ${m.league}</span>
-        ${statusBadge}
+        <div class="match-header-actions">
+          ${m.isLive ? `<button class="btn-live-stream-badge" onclick="watchMatchStream('${m.id}')"><span class="stream-pulse-dot"></span> 📺 Watch Live</button>` : ''}
+          ${statusBadge}
+        </div>
       </div>
       <div class="match-teams-box">
         <div class="team-row">
@@ -1409,3 +1412,123 @@ function alertNotification(title, msg) {
   triggerHaptic('light');
   showToast(`${title}: ${msg}`);
 }
+
+// --- 1xTV LIVE STREAMING ENGINE ---
+let currentStreamMatchId = 'm_1';
+
+const STREAM_VIDEOS = {
+  m_1: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+  m_2: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+  m_3: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+  m_4: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4",
+  m_6: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4"
+};
+
+function watchMatchStream(matchId) {
+  triggerHaptic('medium');
+  sounds.playClick();
+  switchTab('stream');
+  switchStreamMatch(matchId);
+}
+
+function switchStreamMatch(matchId) {
+  triggerHaptic('light');
+  currentStreamMatchId = matchId;
+
+  // Update active pill button
+  document.querySelectorAll('.stream-chan-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('onclick')?.includes(`'${matchId}'`));
+  });
+
+  const match = MATCHES_DATA.find(m => m.id === matchId) || MATCHES_DATA[0];
+
+  // Update video source
+  const video = document.getElementById('streamVideoPlayer');
+  const source = document.getElementById('streamVideoSource');
+  if (video && source) {
+    const videoUrl = STREAM_VIDEOS[matchId] || STREAM_VIDEOS.m_1;
+    if (source.src !== videoUrl) {
+      source.src = videoUrl;
+      video.load();
+      video.play().catch(e => console.log('Autoplay prevented:', e));
+    }
+  }
+
+  // Update overlay score
+  const scoreBadge = document.getElementById('streamMatchPill');
+  if (scoreBadge) {
+    scoreBadge.textContent = `${match.leagueIcon} ${match.homeTeam} ${match.homeScore ?? 0} - ${match.awayScore ?? 0} ${match.awayTeam} (${match.time})`;
+  }
+
+  // Update stats teams
+  const homeLbl = document.getElementById('statHomeTeam');
+  const awayLbl = document.getElementById('statAwayTeam');
+  if (homeLbl) homeLbl.textContent = match.homeTeam;
+  if (awayLbl) awayLbl.textContent = match.awayTeam;
+
+  const titleEl = document.getElementById('streamBettingTitle');
+  if (titleEl) titleEl.textContent = `⚡ In-Play Live Odds (${match.homeTeam} vs ${match.awayTeam})`;
+
+  renderStreamOdds(match);
+}
+
+function renderStreamOdds(m) {
+  const container = document.getElementById('streamOddsRow');
+  if (!container) return;
+
+  const isSelected = (pickType) => {
+    return STATE.betslip.selections.some(s => s.matchId === m.id && s.pickType === pickType);
+  };
+
+  container.innerHTML = `
+    <button class="btn-odd ${isSelected('1') ? 'selected' : ''}" onclick="toggleOddSelection('${m.id}', '1', '${m.homeTeam}', ${m.odds.home})">
+      <span class="odd-type">${m.homeTeam} (1)</span>
+      <span class="odd-val">${m.odds.home.toFixed(2)}</span>
+    </button>
+    ${m.odds.draw > 0 ? `
+      <button class="btn-odd ${isSelected('X') ? 'selected' : ''}" onclick="toggleOddSelection('${m.id}', 'X', 'Draw (X)', ${m.odds.draw})">
+        <span class="odd-type">Draw (X)</span>
+        <span class="odd-val">${m.odds.draw.toFixed(2)}</span>
+      </button>
+    ` : ''}
+    <button class="btn-odd ${isSelected('2') ? 'selected' : ''}" onclick="toggleOddSelection('${m.id}', '2', '${m.awayTeam}', ${m.odds.away})">
+      <span class="odd-type">${m.awayTeam} (2)</span>
+      <span class="odd-val">${m.odds.away.toFixed(2)}</span>
+    </button>
+  `;
+}
+
+function toggleStreamAudio() {
+  triggerHaptic('light');
+  const video = document.getElementById('streamVideoPlayer');
+  const icon = document.getElementById('audioIcon');
+  const text = document.getElementById('audioText');
+  if (!video) return;
+
+  video.muted = !video.muted;
+  if (icon && text) {
+    icon.textContent = video.muted ? '🔇' : '🔊';
+    text.textContent = video.muted ? 'Unmute' : 'Mute';
+  }
+}
+
+function toggleStreamFullscreen() {
+  triggerHaptic('medium');
+  const wrapper = document.getElementById('streamVideoWrapper');
+  const video = document.getElementById('streamVideoPlayer');
+  if (!wrapper) return;
+
+  if (document.fullscreenElement) {
+    document.exitFullscreen().catch(e => {});
+  } else if (wrapper.requestFullscreen) {
+    wrapper.requestFullscreen().catch(e => {});
+  } else if (video && video.webkitEnterFullscreen) {
+    video.webkitEnterFullscreen();
+  }
+}
+
+// Initialize default stream odds
+setTimeout(() => {
+  const defaultMatch = MATCHES_DATA[0];
+  if (defaultMatch) renderStreamOdds(defaultMatch);
+}, 500);
