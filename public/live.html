@@ -8,7 +8,7 @@
   <meta name="referrer" content="no-referrer">
   <title>1X Live Match Center</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="match-center.css?v=4.3">
+  <link rel="stylesheet" href="match-center.css?v=4.4">
 </head>
 <body>
   <svg class="icon-library" aria-hidden="true">
@@ -90,6 +90,43 @@
     <symbol id="icon-plus" viewBox="0 0 24 24">
       <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
     </symbol>
+    <symbol id="icon-home" viewBox="0 0 24 24">
+      <path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H5.5A1.5 1.5 0 0 1 4 19v-8.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+      <path d="M9.5 20.5v-6h5v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-chart" viewBox="0 0 24 24">
+      <path d="M5 19V5m14 14H5m3-3V11m4 5V8m4 8v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-crown" viewBox="0 0 24 24">
+      <path d="M4 17.5 5 8l4.3 3.4L12 6l2.7 5.4L19 8l1 9.5H4Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M4.5 20h15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-headset" viewBox="0 0 24 24">
+      <path d="M5 13a7 7 0 0 1 14 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      <rect x="3.5" y="13" width="3.5" height="6" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <rect x="17" y="13" width="3.5" height="6" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <path d="M19 19a3 3 0 0 1-3 3h-2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-gift" viewBox="0 0 24 24">
+      <rect x="4" y="9" width="16" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <path d="M5.5 13v6.5a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V13M12 9v11.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M12 9S10.5 4.5 8 5.2 9.5 9 12 9Zm0 0s1.5-4.5 4-3.8S14.5 9 12 9Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-user" viewBox="0 0 24 24">
+      <circle cx="12" cy="8.5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.7"/>
+      <path d="M5 20a7 7 0 0 1 14 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-grid" viewBox="0 0 24 24">
+      <rect x="4" y="4" width="7" height="7" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.7"/>
+      <rect x="13" y="4" width="7" height="7" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.7"/>
+      <rect x="4" y="13" width="7" height="7" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.7"/>
+      <rect x="13" y="13" width="7" height="7" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.7"/>
+    </symbol>
+    <symbol id="icon-shield-ball" viewBox="0 0 32 32">
+      <path d="M16 3 27 7v8c0 7-4.6 12.6-11 15C9.6 27.6 5 22 5 15V7l11-4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+      <circle cx="16" cy="14.5" r="4.4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <path d="m16 11 1.9 1.4-.7 2.3h-2.4l-.7-2.3L16 11Z" fill="currentColor"/>
+    </symbol>
   </svg>
 
   <div class="app-shell">
@@ -99,7 +136,12 @@
         <span class="brand-copy"><strong>1X LIVE</strong><small>Match Center</small></span>
       </a>
 
-      <nav class="sport-navigation" aria-label="Sports">
+      <nav class="sport-navigation" aria-label="Sections">
+        <span class="nav-label">Menu</span>
+        <button class="sport-nav home-nav" type="button" data-bottom="home">
+          <svg><use href="#icon-home"/></svg>
+          <span>Home</span>
+        </button>
         <span class="nav-label">Sports</span>
         <button class="sport-nav active" type="button" data-sport="football">
           <svg><use href="#icon-football"/></svg>
@@ -152,6 +194,104 @@
 
       <div class="page-grid">
         <main class="main-content">
+          <section class="home-view" id="homeView" aria-label="Home">
+            <div class="home-hero">
+              <div class="home-hero-glow" aria-hidden="true"></div>
+              <div class="home-hero-top">
+                <span class="hero-mark"><svg><use href="#icon-shield-ball"/></svg></span>
+                <div class="hero-word">
+                  <strong>MAKO CAMBO</strong>
+                  <span>LIVE SPORTS</span>
+                </div>
+              </div>
+              <p class="hero-tag">បាល់ទាត់ &amp; Mobile Legends · ផ្សាយបន្តផ្ទាល់ Live scores &amp; odds</p>
+              <div class="hero-sports">
+                <button class="hero-sport" type="button" data-home-nav="football">
+                  <span class="hero-sport-icon"><svg><use href="#icon-football"/></svg></span>
+                  <span class="hero-sport-copy"><strong>បាល់ទាត់</strong><small>Football</small></span>
+                  <span class="hero-sport-live" id="homeFootballLive">—</span>
+                </button>
+                <button class="hero-sport" type="button" data-home-nav="mlbb">
+                  <span class="hero-sport-icon"><svg><use href="#icon-mlbb"/></svg></span>
+                  <span class="hero-sport-copy"><strong>Mobile Legends</strong><small>MLBB</small></span>
+                  <span class="hero-sport-live" id="homeMlbbLive">—</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="home-wallet">
+              <div class="hw-user">
+                <span class="hw-avatar" id="homeAvatar"><svg><use href="#icon-user"/></svg></span>
+                <div class="hw-id">
+                  <strong id="homeGreeting">សួស្តី, Guest</strong>
+                  <small id="homeUserId">ID: —</small>
+                </div>
+              </div>
+              <div class="hw-balance">
+                <span class="hw-balance-label">សមតុល្យ · Balance</span>
+                <strong><span id="homeBalance">—</span> <small>CR</small></strong>
+              </div>
+              <button class="hw-refresh" id="homeRefresh" type="button" aria-label="Refresh balance"><svg><use href="#icon-refresh"/></svg></button>
+            </div>
+
+            <div class="home-primary">
+              <button class="home-primary-btn live" type="button" data-home-nav="live">
+                <span class="hp-icon"><span class="live-dot"></span></span>
+                <span class="hp-copy"><strong>ប្រកួតផ្សាយផ្ទាល់</strong><small>Live matches now</small></span>
+                <svg class="hp-go"><use href="#icon-chevron"/></svg>
+              </button>
+              <button class="home-primary-btn bets" type="button" data-home-nav="bets">
+                <span class="hp-icon"><svg><use href="#icon-ticket"/></svg></span>
+                <span class="hp-copy"><strong>សន្លឹកភ្នាល់</strong><small>My bet slip &amp; history</small></span>
+                <svg class="hp-go"><use href="#icon-chevron"/></svg>
+              </button>
+            </div>
+
+            <div class="home-section-label"><svg><use href="#icon-grid"/></svg><span>មុខងារ · Features</span></div>
+            <div class="home-grid">
+              <button class="home-tile" type="button" data-home-nav="football">
+                <span class="tile-icon football"><svg><use href="#icon-football"/></svg></span>
+                <strong>បាល់ទាត់</strong><small>Football</small>
+              </button>
+              <button class="home-tile" type="button" data-home-nav="mlbb">
+                <span class="tile-icon mlbb"><svg><use href="#icon-mlbb"/></svg></span>
+                <strong>Mobile Legends</strong><small>MLBB</small>
+              </button>
+              <button class="home-tile" type="button" data-home-nav="live">
+                <span class="tile-icon live"><svg><use href="#icon-pulse"/></svg></span>
+                <strong>ផ្សាយផ្ទាល់</strong><small>LIVE now</small>
+              </button>
+              <button class="home-tile" type="button" data-home-nav="results">
+                <span class="tile-icon results"><svg><use href="#icon-chart"/></svg></span>
+                <strong>លទ្ធផល</strong><small>Results</small>
+              </button>
+              <button class="home-tile" type="button" data-home-nav="upcoming">
+                <span class="tile-icon schedule"><svg><use href="#icon-calendar"/></svg></span>
+                <strong>កាលវិភាគ</strong><small>Schedule</small>
+              </button>
+              <button class="home-tile" type="button" data-home-nav="bets">
+                <span class="tile-icon ticket"><svg><use href="#icon-ticket"/></svg></span>
+                <strong>ភ្នាល់របស់ខ្ញុំ</strong><small>My bets</small>
+              </button>
+              <button class="home-tile" type="button" data-home-link="vip">
+                <span class="tile-icon vip"><svg><use href="#icon-crown"/></svg></span>
+                <strong>ក្រុម VIP</strong><small>Telegram group</small>
+              </button>
+              <button class="home-tile" type="button" data-home-link="support">
+                <span class="tile-icon support"><svg><use href="#icon-headset"/></svg></span>
+                <strong>ទាក់ទង Admin</strong><small>Support 24/7</small>
+              </button>
+            </div>
+
+            <div class="home-promo">
+              <div class="promo-copy">
+                <strong> តាមដានប្រកួតផ្សាយផ្ទាល់</strong>
+                <span>Live football &amp; Mobile Legends scores, winners, and model odds — updated every few seconds.</span>
+              </div>
+              <button class="promo-cta" type="button" data-home-nav="live">មើលឥឡូវ · Watch</button>
+            </div>
+          </section>
+
           <section class="page-intro" aria-labelledby="pageTitle">
             <div class="intro-copy">
               <span class="eyebrow"><svg><use href="#icon-pulse"/></svg> Live match intelligence</span>
@@ -254,12 +394,21 @@
     </section>
   </div>
 
-  <nav class="mobile-navigation" aria-label="Mobile sports navigation">
-    <button class="mobile-sport active" type="button" data-sport="football">
-      <svg><use href="#icon-football"/></svg><span>Football</span>
+  <nav class="bottom-nav" aria-label="Primary navigation">
+    <button class="bottom-tab active" type="button" data-bottom="home">
+      <svg><use href="#icon-home"/></svg><span>ទំព័រដើម</span>
     </button>
-    <button class="mobile-sport" type="button" data-sport="mlbb">
-      <svg><use href="#icon-mlbb"/></svg><span>Mobile Legends</span>
+    <button class="bottom-tab" type="button" data-bottom="football">
+      <svg><use href="#icon-football"/></svg><span>បាល់ទាត់</span>
+    </button>
+    <button class="bottom-tab" type="button" data-bottom="mlbb">
+      <svg><use href="#icon-mlbb"/></svg><span>ML</span>
+    </button>
+    <button class="bottom-tab" type="button" data-bottom="live">
+      <svg><use href="#icon-pulse"/></svg><span>ផ្សាយ</span>
+    </button>
+    <button class="bottom-tab" type="button" data-bottom="account">
+      <svg><use href="#icon-wallet"/></svg><span>គណនី</span>
     </button>
   </nav>
 
@@ -393,6 +542,6 @@
   <noscript>
     <div class="noscript-message">JavaScript is required to display live scores.</div>
   </noscript>
-  <script src="match-center.js?v=4.3"></script>
+  <script src="match-center.js?v=4.4"></script>
 </body>
 </html>

@@ -49,6 +49,7 @@ const state = {
   viewerVideoId: null,
   viewerReturnFocus: null,
   viewerCloseTimer: null,
+  view: 'home',
   user: { id: null, balance: null },
   bets: [],
   betslip: { selections: [], stake: 10 },
@@ -474,6 +475,8 @@ function render() {
   updateOpenMatchViewer();
   renderBetslip();
   renderWallet();
+  updateBottomNav();
+  if (state.view === 'home') renderHome();
 }
 
 function renderSummary() {
@@ -968,7 +971,7 @@ function setText(id, value) {
 
 function bindEvents() {
   document.querySelectorAll('[data-sport]').forEach(button => {
-    button.addEventListener('click', () => switchSport(button.dataset.sport));
+    button.addEventListener('click', () => { showView('matches'); switchSport(button.dataset.sport); });
   });
 
   document.querySelectorAll('.filter-tab').forEach(button => {
@@ -1025,6 +1028,7 @@ function bindEvents() {
   });
 
   bindBettingEvents();
+  bindHomeEvents();
 
   window.addEventListener('online', () => refreshScores({ forceFull: true }));
   window.addEventListener('offline', () => setConnection('offline'));
@@ -1033,11 +1037,15 @@ function bindEvents() {
 function initialize() {
   initializeTelegram();
   state.user.id = getUserId();
+  document.body.dataset.view = state.view;
   bindEvents();
   updateNavigation();
+  updateBottomNav();
   updatePageCopy();
   renderWallet();
   renderBetslip();
+  renderHome();
+  loadHomeCounts();
   renderLoading();
   refreshScores({ forceFull: true });
   refreshUser();
@@ -1328,6 +1336,7 @@ async function refreshUser() {
     state.bets = Array.isArray(data.bets) ? data.bets : [];
     announceSettlements(previousBets, state.bets);
     renderWallet();
+    if (state.view === 'home') { renderHome(); loadHomeCounts(); }
     if (state.betsOpen) renderBetsDrawer();
   } catch (_) {
     // Balance refresh is best-effort; the next poll retries.
@@ -1428,5 +1437,111 @@ function bindBettingEvents() {
     if (event.key !== 'Escape') return;
     if (state.betsOpen) closeBetsDrawer();
     else if (state.betslipOpen) closeBetslip();
+  });
+}
+
+
+/* ==========================================================================
+   HOME: landing screen, view routing, and bottom navigation.
+   ========================================================================== */
+
+function showView(view) {
+  state.view = view === 'home' ? 'home' : 'matches';
+  document.body.dataset.view = state.view;
+  updateBottomNav();
+  if (state.view === 'home') {
+    renderHome();
+    loadHomeCounts();
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function updateBottomNav() {
+  document.querySelectorAll('.bottom-tab').forEach(tab => {
+    const key = tab.dataset.bottom;
+    let active = false;
+    if (key === 'home') active = state.view === 'home';
+    else if (key === 'football') active = state.view === 'matches' && state.sport === 'football' && state.filter !== 'live';
+    else if (key === 'mlbb') active = state.view === 'matches' && state.sport === 'mlbb' && state.filter !== 'live';
+    else if (key === 'live') active = state.view === 'matches' && state.filter === 'live';
+    tab.classList.toggle('active', active);
+  });
+}
+
+function renderHome() {
+  const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+  const name = telegramUser
+    ? (cleanText([telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' ')) || 'Player')
+    : 'Guest';
+  setText('homeGreeting', `សួស្តី, ${name}`);
+  const idSource = telegramUser?.id ? String(telegramUser.id) : String(state.user.id || 'guest').replace(/^guest_/, '');
+  setText('homeUserId', `ID: ${idSource}`);
+  setText('homeBalance', state.user.balance == null ? '—' : formatCredits(state.user.balance));
+}
+
+async function loadHomeCounts() {
+  try {
+    const response = await fetch('/api/matches?view=live&t=' + Date.now(), {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' }
+    });
+    const data = await response.json();
+    const live = Array.isArray(data.matches) ? data.matches : [];
+    const football = live.filter(match => match.sport === 'football').length;
+    const mlbb = live.filter(match => match.sport === 'mlbb').length;
+    setText('homeFootballLive', football > 0 ? `${football} LIVE` : 'Open');
+    setText('homeMlbbLive', mlbb > 0 ? `${mlbb} LIVE` : 'Open');
+  } catch (_) {
+    setText('homeFootballLive', 'Open');
+    setText('homeMlbbLive', 'Open');
+  }
+}
+
+function handleHomeNav(target) {
+  triggerHaptic('selection');
+  if (target === 'bets') { openBetsDrawer(); return; }
+  showView('matches');
+  if (target === 'football' || target === 'mlbb') {
+    switchSport(target);
+    setFilter('all');
+  } else if (target === 'live') {
+    setFilter('live');
+  } else if (target === 'results') {
+    setFilter('results');
+  } else if (target === 'upcoming') {
+    setFilter('upcoming');
+  }
+  updateBottomNav();
+}
+
+function handleHomeLink(target) {
+  const label = target === 'vip' ? 'VIP group' : 'Support';
+  showToast('', 'external', label, 'Add your Telegram link in settings to enable this shortcut.');
+}
+
+function handleBottomNav(target) {
+  triggerHaptic('selection');
+  if (target === 'home') { showView('home'); return; }
+  if (target === 'account') { openBetsDrawer(); return; }
+  showView('matches');
+  if (target === 'football' || target === 'mlbb') switchSport(target);
+  else if (target === 'live') setFilter('live');
+  updateBottomNav();
+}
+
+function bindHomeEvents() {
+  document.querySelectorAll('[data-home-nav]').forEach(element => {
+    element.addEventListener('click', () => handleHomeNav(element.dataset.homeNav));
+  });
+  document.querySelectorAll('[data-home-link]').forEach(element => {
+    element.addEventListener('click', () => handleHomeLink(element.dataset.homeLink));
+  });
+  document.querySelectorAll('[data-bottom]').forEach(element => {
+    element.addEventListener('click', () => handleBottomNav(element.dataset.bottom));
+  });
+  document.getElementById('homeRefresh')?.addEventListener('click', () => {
+    refreshUser();
+    loadHomeCounts();
+    triggerHaptic('light');
   });
 }
