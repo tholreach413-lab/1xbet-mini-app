@@ -838,7 +838,6 @@ function generateMatchCardHTML(m) {
     `;
   }
 
-    const isMlbb = m.sport === 'mlbb';
     const boTag = isMlbb && m.bo ? `<span class="ls-mlbb-bo-tag">${m.bo}</span>` : '';
 
     return `
