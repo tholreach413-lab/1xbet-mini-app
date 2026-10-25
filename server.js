@@ -122,19 +122,35 @@ async function fetchMobileLegendsMatches() {
 let isFetchingMatches = false;
 let cachedFootballMatches = [];
 
+async function resolveFeedWithin(promise, fallback, label, timeoutMs = 20000) {
+  let timeout;
+  const deadline = new Promise(resolve => {
+    timeout = setTimeout(() => {
+      console.warn(`${label} refresh exceeded ${timeoutMs}ms; serving the last completed snapshot`);
+      resolve(fallback);
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([
+      Promise.resolve(promise).catch(error => {
+        console.warn(`${label} refresh notice:`, error.message);
+        return fallback;
+      }),
+      deadline
+    ]);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function refreshMatchesBackground() {
   if (isFetchingMatches) return cachedMatches;
   isFetchingMatches = true;
   try {
     const [footballMatches, mlbbMatches] = await Promise.all([
-      fetchFromLiveScore().catch(error => {
-        console.warn('Football refresh notice:', error.message);
-        return cachedFootballMatches;
-      }),
-      fetchMobileLegendsMatches().catch(error => {
-        console.warn('MLBB refresh notice:', error.message);
-        return cachedMlbbMatches;
-      })
+      resolveFeedWithin(fetchFromLiveScore(), cachedFootballMatches, 'Football', 12000),
+      resolveFeedWithin(fetchMobileLegendsMatches(), cachedMlbbMatches, 'MLBB', 25000)
     ]);
 
     if (footballMatches.length > 0) cachedFootballMatches = footballMatches;

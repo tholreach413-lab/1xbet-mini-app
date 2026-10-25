@@ -423,9 +423,8 @@ function createMobileLegendsFeed(options = {}) {
 
   async function fetchText(path) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
-    timeout.unref?.();
-    try {
+    let timeout;
+    const request = (async () => {
       const response = await fetchImpl(`${GOSU_BASE_URL}${path}`, {
         headers: REQUEST_HEADERS,
         signal: controller.signal
@@ -433,7 +432,17 @@ function createMobileLegendsFeed(options = {}) {
       if (!response.ok) {
         throw new Error(`GosuGamers returned HTTP ${response.status} for ${path}`);
       }
-      return await response.text();
+      return response.text();
+    })();
+    const deadline = new Promise((_, reject) => {
+      timeout = setTimeout(() => {
+        controller.abort();
+        reject(new Error(`GosuGamers request timed out for ${path}`));
+      }, requestTimeoutMs);
+    });
+
+    try {
+      return await Promise.race([request, deadline]);
     } finally {
       clearTimeout(timeout);
     }

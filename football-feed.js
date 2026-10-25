@@ -164,9 +164,7 @@ function createFootballFeed(options = {}) {
 
   function getDefinitions(now, hasLiveMatches) {
     const today = formatProviderDate(now);
-    const yesterday = formatProviderDate(now - 86400000);
     const tomorrow = formatProviderDate(now + 86400000);
-    const plusTwo = formatProviderDate(now + 2 * 86400000);
 
     return [
       {
@@ -183,38 +181,34 @@ function createFootballFeed(options = {}) {
         bucket: 'today'
       },
       {
-        key: 'yesterday',
-        path: `/date/soccer/${yesterday}/7.00`,
-        ttl: 300000,
-        bucket: 'yesterday'
-      },
-      {
         key: 'tomorrow',
         path: `/date/soccer/${tomorrow}/7.00`,
         ttl: 120000,
         bucket: 'tomorrow'
-      },
-      {
-        key: 'upcoming',
-        path: `/date/soccer/${plusTwo}/7.00`,
-        ttl: 300000,
-        bucket: 'upcoming'
       }
     ];
   }
 
   async function fetchJson(path) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
-    timeout.unref?.();
-
-    try {
+    let timeout;
+    const request = (async () => {
       const response = await fetchImpl(`${API_BASE_URL}${path}`, {
         headers: REQUEST_HEADERS,
         signal: controller.signal
       });
       if (!response.ok) throw new Error(`LiveScore returned HTTP ${response.status} for ${path}`);
-      return await response.json();
+      return response.json();
+    })();
+    const deadline = new Promise((_, reject) => {
+      timeout = setTimeout(() => {
+        controller.abort();
+        reject(new Error(`LiveScore request timed out for ${path}`));
+      }, requestTimeoutMs);
+    });
+
+    try {
+      return await Promise.race([request, deadline]);
     } finally {
       clearTimeout(timeout);
     }
@@ -254,7 +248,7 @@ function createFootballFeed(options = {}) {
     const results = await Promise.all(definitions.map(definition => refreshBucket(definition, force)));
 
     const merged = new Map();
-    const orderedKeys = ['yesterday', 'today', 'tomorrow', 'upcoming', 'live'];
+    const orderedKeys = ['today', 'tomorrow', 'live'];
     for (const key of orderedKeys) {
       const index = definitions.findIndex(definition => definition.key === key);
       if (index < 0) continue;
