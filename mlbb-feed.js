@@ -234,12 +234,6 @@ function parseMatchDetail(html) {
   return null;
 }
 
-function countryFlag(countryCode) {
-  const code = String(countryCode || '').toUpperCase();
-  if (!/^[A-Z]{2}$/.test(code)) return '🎮';
-  return String.fromCodePoint(...[...code].map(char => 127397 + char.charCodeAt(0)));
-}
-
 function dateOrdinal(timestamp, timeZone) {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,
@@ -332,7 +326,6 @@ function buildMatch(card, detail, now, timeZone) {
     : tournament;
 
   const countryName = stripHtml(home.countryName || away.countryName || 'International');
-  const countryCode = home.countryCode || away.countryCode || '';
   const day = isLive ? 'Today' : getDayLabel(timestamp, now, timeZone, isFinished);
   const time = isLive
     ? `LIVE ${scoreSlash || '0/0'} (${bo})`
@@ -362,14 +355,14 @@ function buildMatch(card, detail, now, timeZone) {
     winner,
     rawLeague: `${league} • ${bo}`,
     league,
-    country: `${countryFlag(countryCode)} ${countryName}`,
-    leagueIcon: '🎮',
+    country: countryName,
     bo,
     isLive,
     isFinished,
     isTop: true,
     day,
     time,
+    period: isLive ? 'LIVE' : (isFinished ? 'FT' : ''),
     kickoffTime: Number.isFinite(timestamp) ? formatKickoff(timestamp, timeZone) : (card.statusText || 'Scheduled'),
     timestamp: Number.isFinite(timestamp) ? timestamp : null,
     streamChannel,

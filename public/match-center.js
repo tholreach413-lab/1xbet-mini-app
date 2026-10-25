@@ -1,0 +1,742 @@
+'use strict';
+
+const SPORTS = {
+  football: {
+    name: 'Football',
+    title: 'Football Match Center',
+    description: 'Live scores, fixtures, and confirmed results from verified football competitions.',
+    icon: 'football'
+  },
+  mlbb: {
+    name: 'Mobile Legends',
+    title: 'Mobile Legends Match Center',
+    description: 'Live series scores, schedules, and confirmed winners from professional MLBB events.',
+    icon: 'mlbb'
+  }
+};
+
+const FILTERS = new Set(['all', 'live', 'today', 'results', 'upcoming']);
+const POLL_INTERVAL = 5000;
+const BACKGROUND_POLL_INTERVAL = 15000;
+const FULL_REFRESH_INTERVAL = 30000;
+const INITIAL_VISIBLE_MATCHES = 36;
+const VISIBLE_MATCH_STEP = 36;
+
+const state = {
+  sport: readStoredSport(),
+  filter: 'all',
+  query: '',
+  matches: [],
+  summary: { total: 0, live: 0, today: 0, finished: 0, upcoming: 0 },
+  previousStates: {
+    football: new Map(),
+    mlbb: new Map()
+  },
+  initializedSports: new Set(),
+  liveIds: new Set(),
+  visibleCount: INITIAL_VISIBLE_MATCHES,
+  lastFullFetch: 0,
+  lastUpdatedAt: null,
+  requestController: null,
+  refreshTimer: null,
+  requestInFlight: false,
+  suppressNextAlerts: true,
+  needsFinalRefresh: false,
+  updatedMatchIds: new Set(),
+  recentUpdates: []
+};
+
+function readStoredSport() {
+  try {
+    const requested = new URLSearchParams(window.location.search).get('sport');
+    if (SPORTS[requested]) return requested;
+    const stored = localStorage.getItem('match-center-sport');
+    return SPORTS[stored] ? stored : 'football';
+  } catch (_) {
+    return 'football';
+  }
+}
+
+function storeSport(sport) {
+  try {
+    localStorage.setItem('match-center-sport', sport);
+  } catch (_) {}
+}
+
+function icon(name, className = '') {
+  const safeName = Object.prototype.hasOwnProperty.call(SPORTS, name) || [
+    'pulse', 'search', 'refresh', 'clock', 'calendar', 'trophy',
+    'chevron', 'close', 'signal', 'arrow-up', 'empty'
+  ].includes(name) ? name : 'pulse';
+  return `<svg${className ? ` class="${escapeHtml(className)}"` : ''} aria-hidden="true"><use href="#icon-${safeName}"/></svg>`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function cleanText(value) {
+  return String(value ?? '')
+    .replace(/[\u{1F1E6}-\u{1F1FF}]/gu, '')
+    .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')
+    .replace(/[\u2600-\u27BF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalize(value) {
+  return cleanText(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function getInitials(value, fallback = 'TM') {
+  const words = cleanText(value).replace(/[^A-Za-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return `${words[0][0]}${words[1][0]}`.toUpperCase();
+  return (words[0] || fallback).slice(0, 2).toUpperCase();
+}
+
+function crestColor(teamName) {
+  const palette = ['#253b67', '#3e2f62', '#214f4b', '#56333c', '#3d4658', '#4d4027'];
+  let hash = 0;
+  for (const character of String(teamName || '')) hash = ((hash << 5) - hash + character.charCodeAt(0)) | 0;
+  return palette[Math.abs(hash) % palette.length];
+}
+
+function hasScore(match) {
+  return Number.isFinite(Number(match.homeScore)) && Number.isFinite(Number(match.awayScore));
+}
+
+function scoreText(match) {
+  if (!hasScore(match)) return 'VS';
+  const separator = match.sport === 'mlbb' ? '/' : '–';
+  return `${Number(match.homeScore)}${separator}${Number(match.awayScore)}`;
+}
+
+function matchState(match) {
+  return {
+    score: hasScore(match) ? `${Number(match.homeScore)}:${Number(match.awayScore)}` : null,
+    isLive: Boolean(match.isLive),
+    isFinished: Boolean(match.isFinished),
+    winner: cleanText(match.winner || '')
+  };
+}
+
+function triggerHaptic(type) {
+  const webApp = window.Telegram?.WebApp;
+  if (!webApp?.HapticFeedback) return;
+  try {
+    if (type === 'success' || type === 'warning' || type === 'error') {
+      webApp.HapticFeedback.notificationOccurred(type);
+    } else {
+      webApp.HapticFeedback.impactOccurred(type || 'light');
+    }
+  } catch (_) {}
+}
+
+function initializeTelegram() {
+  const webApp = window.Telegram?.WebApp;
+  if (!webApp) return;
+  try {
+    webApp.ready();
+    webApp.expand();
+    webApp.setHeaderColor?.('#090d14');
+    webApp.setBackgroundColor?.('#090d14');
+  } catch (_) {}
+}
+
+async function fetchSnapshot(view) {
+  const controller = new AbortController();
+  state.requestController = controller;
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const params = new URLSearchParams({
+      sport: state.sport,
+      view,
+      requestTime: String(Date.now())
+    });
+    const response = await fetch(`/api/matches?${params}`, {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error(`Score service returned HTTP ${response.status}`);
+    const data = await response.json();
+    if (!data.success || !Array.isArray(data.matches)) {
+      throw new Error('Score service returned an invalid response');
+    }
+    return data;
+  } finally {
+    clearTimeout(timeout);
+    if (state.requestController === controller) state.requestController = null;
+  }
+}
+
+function updatePreviousStates(matches, suppressAlerts) {
+  const previousMap = state.previousStates[state.sport];
+  const canAlert = !suppressAlerts && document.visibilityState === 'visible';
+
+  for (const match of matches) {
+    const current = matchState(match);
+    const previous = previousMap.get(match.id);
+
+    if (canAlert && previous && match.sport === state.sport) {
+      if (current.isFinished && !previous.isFinished) {
+        showWinnerAlert(match, current);
+        markMatchUpdated(match.id);
+      } else if (current.isLive && current.score && previous.score && current.score !== previous.score) {
+        showScoreAlert(match);
+        markMatchUpdated(match.id);
+      }
+    }
+
+    previousMap.set(match.id, current);
+  }
+
+  state.initializedSports.add(state.sport);
+}
+
+function showScoreAlert(match) {
+  const title = match.sport === 'mlbb' ? 'Series score updated' : 'Live score updated';
+  const message = `${cleanText(match.homeTeam)} ${scoreText(match)} ${cleanText(match.awayTeam)}`;
+  showToast('goal', SPORTS[state.sport].icon, title, message);
+  addRecentUpdate(title, message);
+  triggerHaptic('medium');
+}
+
+function showWinnerAlert(match, current) {
+  const winner = current.winner;
+  const isDraw = normalize(winner) === 'draw';
+  const title = match.sport === 'mlbb' ? 'Series complete' : 'Full time';
+  const message = isDraw
+    ? `${cleanText(match.homeTeam)} and ${cleanText(match.awayTeam)} finished level at ${scoreText(match)}`
+    : `${winner || 'Result confirmed'} won ${scoreText(match)}`;
+  showToast('winner', 'trophy', title, message);
+  addRecentUpdate(title, message);
+  triggerHaptic('success');
+}
+
+function showToast(type, iconName, title, message) {
+  const region = document.getElementById('toastRegion');
+  if (!region) return;
+
+  const toast = document.createElement('article');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `
+    <span class="toast-icon">${icon(iconName)}</span>
+    <span class="toast-copy">
+      <strong>${escapeHtml(title)}</strong>
+      <span>${escapeHtml(message)}</span>
+    </span>
+    <button class="toast-close" type="button" aria-label="Dismiss notification">${icon('close')}</button>
+  `;
+
+  const dismiss = () => {
+    if (!toast.isConnected) return;
+    toast.classList.add('is-leaving');
+    setTimeout(() => toast.remove(), 180);
+  };
+  toast.querySelector('.toast-close')?.addEventListener('click', dismiss);
+  region.prepend(toast);
+  while (region.children.length > 3) region.lastElementChild?.remove();
+  setTimeout(dismiss, 6000);
+}
+
+function addRecentUpdate(title, message) {
+  state.recentUpdates.unshift({ title, message, time: Date.now() });
+  state.recentUpdates = state.recentUpdates.slice(0, 8);
+}
+
+function markMatchUpdated(matchId) {
+  state.updatedMatchIds.add(matchId);
+  setTimeout(() => {
+    state.updatedMatchIds.delete(matchId);
+    const row = [...document.querySelectorAll('.match-row')].find(element => element.dataset.matchId === matchId);
+    row?.classList.remove('score-updated');
+  }, 1600);
+}
+
+function mergeLiveSnapshot(liveMatches) {
+  const map = new Map(state.matches.map(match => [match.id, match]));
+  for (const match of liveMatches) map.set(match.id, match);
+  state.matches = [...map.values()];
+}
+
+async function refreshScores(options = {}) {
+  if (state.requestInFlight) return;
+  state.requestInFlight = true;
+  state.needsFinalRefresh = false;
+  const requestedSport = state.sport;
+  const forceFull = Boolean(options.forceFull);
+  const shouldFetchFull = forceFull
+    || requestedSport === 'mlbb'
+    || state.matches.length === 0
+    || Date.now() - state.lastFullFetch >= FULL_REFRESH_INTERVAL;
+  const view = shouldFetchFull ? 'app' : 'live';
+
+  setConnection('syncing');
+  document.getElementById('refreshButton')?.classList.add('loading');
+
+  try {
+    const data = await fetchSnapshot(view);
+    if (requestedSport !== state.sport) return;
+
+    const suppressAlerts = state.suppressNextAlerts || !state.initializedSports.has(state.sport);
+    const previousLiveIds = new Set(state.liveIds);
+
+    updatePreviousStates(data.matches, suppressAlerts);
+    if (view === 'app') {
+      state.matches = data.matches;
+      state.summary = data.summary || calculateSummary(data.matches);
+      state.lastFullFetch = Date.now();
+    } else {
+      mergeLiveSnapshot(data.matches);
+      state.summary = {
+        ...state.summary,
+        live: Number(data.summary?.live ?? data.liveCount ?? data.matches.length)
+      };
+    }
+
+    state.liveIds = new Set(data.matches.filter(match => match.isLive).map(match => match.id));
+    if (view === 'live') {
+      const disappearedLiveMatch = [...previousLiveIds].some(id => !state.liveIds.has(id));
+      if (disappearedLiveMatch) state.needsFinalRefresh = true;
+    }
+
+    state.lastUpdatedAt = data.updatedAt || new Date().toISOString();
+    state.suppressNextAlerts = false;
+    const providerAge = Date.now() - Date.parse(state.lastUpdatedAt);
+    setConnection(Number.isFinite(providerAge) && providerAge > 30000 ? 'offline' : 'online');
+    render();
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      console.warn('Live score refresh:', error.message);
+      setConnection('offline');
+      if (state.matches.length === 0) renderError();
+    }
+  } finally {
+    state.requestInFlight = false;
+    document.getElementById('refreshButton')?.classList.remove('loading');
+    if (requestedSport === state.sport) {
+      if (state.needsFinalRefresh) scheduleRefresh(350, true);
+      else scheduleRefresh(document.visibilityState === 'visible' ? POLL_INTERVAL : BACKGROUND_POLL_INTERVAL);
+    } else {
+      scheduleRefresh(0, true);
+    }
+  }
+}
+
+function scheduleRefresh(delay, forceFull = false) {
+  clearTimeout(state.refreshTimer);
+  state.refreshTimer = setTimeout(() => refreshScores({ forceFull }), delay);
+}
+
+function calculateSummary(matches) {
+  return {
+    total: matches.length,
+    live: matches.filter(match => match.isLive).length,
+    today: matches.filter(match => match.day === 'Today' || match.isLive).length,
+    finished: matches.filter(match => match.isFinished).length,
+    upcoming: matches.filter(match => !match.isLive && !match.isFinished).length
+  };
+}
+
+function setConnection(status) {
+  const labels = {
+    syncing: 'Synchronizing',
+    online: 'Live connection',
+    offline: 'Reconnecting'
+  };
+  const connectionText = document.getElementById('connectionText');
+  const sidebarText = document.getElementById('sidebarStatusText');
+  if (connectionText) connectionText.textContent = labels[status];
+  if (sidebarText) sidebarText.textContent = labels[status];
+
+  document.querySelectorAll('#connectionChip .status-indicator, #sidebarStatusDot').forEach(dot => {
+    dot.classList.remove('online', 'offline');
+    if (status === 'online') dot.classList.add('online');
+    if (status === 'offline') dot.classList.add('offline');
+  });
+}
+
+function switchSport(sport) {
+  if (!SPORTS[sport] || sport === state.sport) return;
+  state.requestController?.abort();
+  clearTimeout(state.refreshTimer);
+  state.sport = sport;
+  state.filter = 'all';
+  state.query = '';
+  state.matches = [];
+  state.summary = { total: 0, live: 0, today: 0, finished: 0, upcoming: 0 };
+  state.liveIds = new Set();
+  state.visibleCount = INITIAL_VISIBLE_MATCHES;
+  state.lastFullFetch = 0;
+  state.suppressNextAlerts = true;
+  storeSport(sport);
+
+  const search = document.getElementById('matchSearch');
+  if (search) search.value = '';
+  document.getElementById('clearSearch')?.setAttribute('hidden', '');
+  updateNavigation();
+  updatePageCopy();
+  renderLoading();
+  refreshScores({ forceFull: true });
+  triggerHaptic('light');
+}
+
+function setFilter(filter) {
+  if (!FILTERS.has(filter)) return;
+  state.filter = filter;
+  state.visibleCount = INITIAL_VISIBLE_MATCHES;
+  document.querySelectorAll('.filter-tab').forEach(button => {
+    const active = button.dataset.filter === filter;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-selected', String(active));
+  });
+  renderMatches();
+}
+
+function updateNavigation() {
+  document.querySelectorAll('[data-sport]').forEach(button => {
+    const active = button.dataset.sport === state.sport;
+    button.classList.toggle('active', active);
+    if (button.getAttribute('role') === 'tab') button.setAttribute('aria-selected', String(active));
+  });
+}
+
+function updatePageCopy() {
+  const config = SPORTS[state.sport];
+  const title = document.getElementById('pageTitle');
+  const description = document.getElementById('pageDescription');
+  const topbarName = document.getElementById('topbarSportName');
+  if (title) title.textContent = config.title;
+  if (description) description.textContent = config.description;
+  if (topbarName) topbarName.textContent = config.name;
+  document.title = `1X Live | ${config.name}`;
+}
+
+function getFilteredMatches() {
+  const query = normalize(state.query);
+  return state.matches.filter(match => {
+    if (state.filter === 'live' && !match.isLive) return false;
+    if (state.filter === 'today' && match.day !== 'Today' && !match.isLive) return false;
+    if (state.filter === 'results' && !match.isFinished) return false;
+    if (state.filter === 'upcoming' && (match.isLive || match.isFinished)) return false;
+
+    if (query) {
+      const searchable = normalize([
+        match.homeTeam,
+        match.awayTeam,
+        match.league,
+        match.rawLeague,
+        match.country
+      ].join(' '));
+      if (!searchable.includes(query)) return false;
+    }
+    return true;
+  });
+}
+
+function leagueKey(match) {
+  return `${cleanText(match.country) || 'International'}::${cleanText(match.league || match.rawLeague) || 'Other matches'}`;
+}
+
+function render() {
+  updateNavigation();
+  updatePageCopy();
+  renderSummary();
+  renderMatches();
+  renderLiveRail();
+  renderFreshness();
+}
+
+function renderSummary() {
+  const summary = state.summary || calculateSummary(state.matches);
+  setText('summaryLive', summary.live || 0);
+  setText('summaryToday', summary.today || 0);
+  setText('summaryFinished', summary.finished || 0);
+  setText('railLiveCount', summary.live || 0);
+  document.querySelectorAll(`[data-count-for="${state.sport}"]`).forEach(element => {
+    element.textContent = String(summary.live || 0);
+  });
+}
+
+function renderFreshness() {
+  const element = document.getElementById('lastUpdated');
+  if (!element || !state.lastUpdatedAt) return;
+  const timestamp = Date.parse(state.lastUpdatedAt);
+  if (!Number.isFinite(timestamp)) {
+    element.textContent = 'Updated recently';
+    return;
+  }
+  const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
+  element.textContent = seconds < 6 ? 'Just now' : `${seconds} seconds ago`;
+}
+
+function renderMatches() {
+  const feed = document.getElementById('matchFeed');
+  if (!feed) return;
+
+  const filtered = getFilteredMatches();
+  const visible = filtered.slice(0, state.visibleCount);
+  const summaryText = document.getElementById('resultSummary');
+  if (summaryText) {
+    const context = state.query ? ` matching "${state.query}"` : '';
+    summaryText.textContent = `${filtered.length.toLocaleString()} ${filtered.length === 1 ? 'match' : 'matches'}${context}`;
+  }
+
+  const loadMore = document.getElementById('loadMoreButton');
+  if (loadMore) loadMore.hidden = visible.length >= filtered.length;
+
+  if (visible.length === 0) {
+    feed.setAttribute('aria-busy', 'false');
+    feed.innerHTML = `
+      <div class="empty-state">
+        ${icon('empty')}
+        <strong>No matches found</strong>
+        <p>Try another status filter or search for a different team or competition.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const groups = new Map();
+  for (const match of visible) {
+    const key = leagueKey(match);
+    if (!groups.has(key)) {
+      groups.set(key, {
+        country: cleanText(match.country) || 'International',
+        league: cleanText(match.league || match.rawLeague) || 'Other matches',
+        matches: []
+      });
+    }
+    groups.get(key).matches.push(match);
+  }
+
+  feed.innerHTML = [...groups.values()].map(group => renderLeague(group)).join('');
+  feed.setAttribute('aria-busy', 'false');
+  bindCrestErrors(feed);
+}
+
+function renderLeague(group) {
+  const monogram = getInitials(group.league, 'LG');
+  return `
+    <section class="league-block">
+      <header class="league-header">
+        <div class="league-heading-copy">
+          <span class="league-monogram">${escapeHtml(monogram)}</span>
+          <div>
+            <strong>${escapeHtml(group.league)}</strong>
+            <span>${escapeHtml(group.country)}</span>
+          </div>
+        </div>
+        <span class="league-match-count">${group.matches.length} ${group.matches.length === 1 ? 'match' : 'matches'}</span>
+      </header>
+      <div>${group.matches.map(renderMatch).join('')}</div>
+    </section>
+  `;
+}
+
+function renderMatch(match) {
+  const finished = Boolean(match.isFinished);
+  const live = Boolean(match.isLive);
+  const homeWinner = finished && normalize(match.winner) === normalize(match.homeTeam);
+  const awayWinner = finished && normalize(match.winner) === normalize(match.awayTeam);
+  const draw = finished && normalize(match.winner) === 'draw';
+  const status = getStatusLabel(match);
+  const timeMeta = live ? 'In play' : finished ? 'Confirmed' : cleanText(match.day || 'Scheduled');
+  const scoreState = live ? 'Live' : finished ? (draw ? 'Draw' : 'Final') : cleanText(match.day || 'Fixture');
+  const updatedClass = state.updatedMatchIds.has(match.id) ? ' score-updated' : '';
+
+  return `
+    <article class="match-row${live ? ' is-live' : ''}${finished ? ' is-finished' : ''}${updatedClass}" data-match-id="${escapeHtml(match.id)}">
+      <div class="match-time-cell">
+        ${live
+          ? `<span class="status-live"><span class="live-dot"></span>${escapeHtml(status)}</span>`
+          : `<span>${escapeHtml(status)}</span>`}
+        <small>${escapeHtml(timeMeta)}</small>
+      </div>
+      ${renderTeam(match.homeTeam, match.homeLogo, 'home', homeWinner, awayWinner)}
+      <div class="score-cell">
+        <span class="score-value">${escapeHtml(scoreText(match))}</span>
+        <span class="score-state">${escapeHtml(scoreState)}</span>
+      </div>
+      ${renderTeam(match.awayTeam, match.awayLogo, 'away', awayWinner, homeWinner)}
+      <span class="match-disclosure">${icon('chevron')}</span>
+    </article>
+  `;
+}
+
+function renderTeam(teamName, logoUrl, side, winner, loser) {
+  const safeTeam = cleanText(teamName) || 'Team';
+  const initials = getInitials(safeTeam);
+  const fallback = `<span class="crest-fallback" style="--crest-color:${crestColor(safeTeam)}">${escapeHtml(initials)}</span>`;
+  const logo = typeof logoUrl === 'string' && (/^\//.test(logoUrl) || /^https:\/\//.test(logoUrl))
+    ? `<img src="${escapeHtml(logoUrl)}" alt="" loading="lazy" decoding="async">`
+    : '';
+  const winnerMarkup = winner
+    ? `<span class="winner-label">${icon('trophy')} Winner</span>`
+    : '';
+  const nameClass = winner ? ' winner' : loser ? ' loser' : '';
+  const crest = `<span class="team-crest">${fallback}${logo}</span>`;
+  const copy = `<span class="team-copy"><span class="team-name${nameClass}">${escapeHtml(safeTeam)}</span>${winnerMarkup}</span>`;
+
+  return side === 'home'
+    ? `<div class="team-cell home">${copy}${crest}</div>`
+    : `<div class="team-cell away">${crest}${copy}</div>`;
+}
+
+function getStatusLabel(match) {
+  if (match.isLive) return cleanText(match.period || match.time || 'Live');
+  if (match.isFinished) return cleanText(match.period || 'FT');
+  return cleanText(match.kickoffTime || match.time || 'Scheduled');
+}
+
+function bindCrestErrors(container) {
+  container.querySelectorAll('.team-crest img').forEach(image => {
+    image.addEventListener('error', () => image.remove(), { once: true });
+  });
+}
+
+function renderLiveRail() {
+  const container = document.getElementById('railLiveMatches');
+  if (!container) return;
+  const liveMatches = state.matches.filter(match => match.isLive).slice(0, 8);
+  if (liveMatches.length === 0) {
+    container.innerHTML = '<div class="rail-empty">There are no live matches in this sport right now.</div>';
+    return;
+  }
+
+  container.innerHTML = liveMatches.map(match => `
+    <button class="rail-match" type="button" data-rail-match-id="${escapeHtml(match.id)}">
+      <span class="rail-match-top"><span>${escapeHtml(cleanText(match.league || 'Live match'))}</span><span>${escapeHtml(getStatusLabel(match))}</span></span>
+      <span class="rail-match-teams"><span>${escapeHtml(cleanText(match.homeTeam))}<br>${escapeHtml(cleanText(match.awayTeam))}</span><strong class="rail-match-score">${escapeHtml(scoreText(match))}</strong></span>
+    </button>
+  `).join('');
+
+  container.querySelectorAll('[data-rail-match-id]').forEach(button => {
+    button.addEventListener('click', () => {
+      const id = button.dataset.railMatchId;
+      const target = [...document.querySelectorAll('.match-row')].find(row => row.dataset.matchId === id);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.classList.add('score-updated');
+        setTimeout(() => target.classList.remove('score-updated'), 1400);
+      } else {
+        state.filter = 'live';
+        setFilter('live');
+      }
+    });
+  });
+}
+
+function renderLoading() {
+  const feed = document.getElementById('matchFeed');
+  if (!feed) return;
+  feed.setAttribute('aria-busy', 'true');
+  feed.innerHTML = `
+    <div class="skeleton-league"><span></span><span></span><span></span></div>
+    <div class="skeleton-match"></div>
+    <div class="skeleton-match"></div>
+    <div class="skeleton-match"></div>
+  `;
+  setText('resultSummary', 'Loading verified fixtures');
+}
+
+function renderError() {
+  const feed = document.getElementById('matchFeed');
+  if (!feed) return;
+  feed.setAttribute('aria-busy', 'false');
+  feed.innerHTML = `
+    <div class="error-state">
+      ${icon('signal')}
+      <strong>Unable to reach the score service</strong>
+      <p>The app will reconnect automatically. You can also use the refresh button above.</p>
+    </div>
+  `;
+}
+
+function setText(id, value) {
+  const element = document.getElementById(id);
+  if (element) element.textContent = String(value);
+}
+
+function bindEvents() {
+  document.querySelectorAll('[data-sport]').forEach(button => {
+    button.addEventListener('click', () => switchSport(button.dataset.sport));
+  });
+
+  document.querySelectorAll('.filter-tab').forEach(button => {
+    button.addEventListener('click', () => setFilter(button.dataset.filter));
+  });
+
+  const search = document.getElementById('matchSearch');
+  const clearSearch = document.getElementById('clearSearch');
+  search?.addEventListener('input', () => {
+    state.query = search.value.trim();
+    state.visibleCount = INITIAL_VISIBLE_MATCHES;
+    clearSearch?.toggleAttribute('hidden', !state.query);
+    renderMatches();
+  });
+
+  clearSearch?.addEventListener('click', () => {
+    if (search) search.value = '';
+    state.query = '';
+    state.visibleCount = INITIAL_VISIBLE_MATCHES;
+    clearSearch.hidden = true;
+    search?.focus();
+    renderMatches();
+  });
+
+  document.getElementById('refreshButton')?.addEventListener('click', () => {
+    clearTimeout(state.refreshTimer);
+    refreshScores({ forceFull: true });
+    triggerHaptic('light');
+  });
+
+  document.getElementById('loadMoreButton')?.addEventListener('click', () => {
+    state.visibleCount += VISIBLE_MATCH_STEP;
+    renderMatches();
+  });
+
+  document.getElementById('backToTop')?.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    clearTimeout(state.refreshTimer);
+    if (document.visibilityState === 'visible') {
+      state.suppressNextAlerts = true;
+      refreshScores({ forceFull: true });
+    } else {
+      scheduleRefresh(BACKGROUND_POLL_INTERVAL);
+    }
+  });
+
+  window.addEventListener('online', () => refreshScores({ forceFull: true }));
+  window.addEventListener('offline', () => setConnection('offline'));
+}
+
+function initialize() {
+  initializeTelegram();
+  bindEvents();
+  updateNavigation();
+  updatePageCopy();
+  renderLoading();
+  refreshScores({ forceFull: true });
+  setInterval(renderFreshness, 5000);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initialize, { once: true });
+} else {
+  initialize();
+}

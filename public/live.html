@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1018">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="no-referrer">
+  <title>1X Live Match Center</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="match-center.css?v=4.0">
+</head>
+<body>
+  <svg class="icon-library" aria-hidden="true">
+    <symbol id="icon-mark" viewBox="0 0 32 32">
+      <path d="M8 6h7l-4 7h5l-9 13 2-10H4L8 6Z" fill="currentColor"/>
+      <path d="m20 7 3.2 5.5L26.5 7H30l-5 8 5 10h-4l-3-6-3.2 6H16l5.1-9.8L16.5 7H20Z" fill="currentColor"/>
+    </symbol>
+    <symbol id="icon-football" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/>
+      <path d="m12 7 3.2 2.3-1.2 3.8h-4l-1.2-3.8L12 7Zm-3.2 2.3L5.6 8m4.4 5.1-2.2 3.2m6.2-3.2 2.2 3.2m-8.4 0 .8 3.2m7.6-3.2-.8 3.2M15.2 9.3 18.4 8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-mlbb" viewBox="0 0 24 24">
+      <path d="M7 7.5h10a4 4 0 0 1 3.8 5.3l-1.5 4.3a2.4 2.4 0 0 1-4.1.7l-1.1-1.3H9.9l-1.1 1.3a2.4 2.4 0 0 1-4.1-.7l-1.5-4.3A4 4 0 0 1 7 7.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+      <path d="M8 10.5v3m-1.5-1.5h3M15.8 11h.1m1.8 2h.1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M9 7.5 7.8 5.2M15 7.5l1.2-2.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-pulse" viewBox="0 0 24 24">
+      <path d="M3 12h4l2.2-5 4.1 10 2.1-5H21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-search" viewBox="0 0 24 24">
+      <circle cx="10.8" cy="10.8" r="6.8" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <path d="m16 16 4.2 4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-refresh" viewBox="0 0 24 24">
+      <path d="M20 7v5h-5M4 17v-5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M18.2 9A7 7 0 0 0 6.5 6.5L4 9m2 6a7 7 0 0 0 11.5 2.5L20 15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-clock" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/>
+      <path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-calendar" viewBox="0 0 24 24">
+      <rect x="4" y="5.5" width="16" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/>
+      <path d="M8 3.5v4m8-4v4M4 9.5h16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-trophy" viewBox="0 0 24 24">
+      <path d="M8 4h8v4.5a4 4 0 0 1-8 0V4Zm4 8.5V17m-3 3h6m-5-3h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M8 6H5v1.5A3.5 3.5 0 0 0 8.5 11M16 6h3v1.5a3.5 3.5 0 0 1-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-chevron" viewBox="0 0 24 24">
+      <path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-close" viewBox="0 0 24 24">
+      <path d="m7 7 10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-signal" viewBox="0 0 24 24">
+      <path d="M5 16.5a10 10 0 0 1 14 0M8 13.5a6 6 0 0 1 8 0M11 10.8a2.2 2.2 0 0 1 2 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <circle cx="12" cy="19" r="1.2" fill="currentColor"/>
+    </symbol>
+    <symbol id="icon-arrow-up" viewBox="0 0 24 24">
+      <path d="M12 19V5m-5 6 5-6 5 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-empty" viewBox="0 0 24 24">
+      <path d="M5 7.5h14v10H5v-10Zm3-3h8m-8 15h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </svg>
+
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Primary navigation">
+      <a class="brand" href="#top" aria-label="1X Live home">
+        <span class="brand-mark"><svg><use href="#icon-mark"/></svg></span>
+        <span class="brand-copy"><strong>1X LIVE</strong><small>Match Center</small></span>
+      </a>
+
+      <nav class="sport-navigation" aria-label="Sports">
+        <span class="nav-label">Sports</span>
+        <button class="sport-nav active" type="button" data-sport="football">
+          <svg><use href="#icon-football"/></svg>
+          <span>Football</span>
+          <span class="nav-live-count" data-count-for="football">0</span>
+        </button>
+        <button class="sport-nav" type="button" data-sport="mlbb">
+          <svg><use href="#icon-mlbb"/></svg>
+          <span>Mobile Legends</span>
+          <span class="nav-live-count" data-count-for="mlbb">0</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-status">
+        <div class="source-lockup">
+          <span class="status-indicator" id="sidebarStatusDot"></span>
+          <div>
+            <strong id="sidebarStatusText">Connecting</strong>
+            <small>Verified match feeds</small>
+          </div>
+        </div>
+        <p>Scores refresh automatically while this screen is open.</p>
+      </div>
+    </aside>
+
+    <section class="workspace" id="top">
+      <header class="topbar">
+        <a class="mobile-brand" href="#top" aria-label="1X Live home">
+          <span class="brand-mark"><svg><use href="#icon-mark"/></svg></span>
+          <span>1X LIVE</span>
+        </a>
+        <div class="topbar-context">
+          <span class="context-label">Live operations</span>
+          <strong id="topbarSportName">Football</strong>
+        </div>
+        <div class="topbar-actions">
+          <div class="connection-chip" id="connectionChip" role="status" aria-live="polite">
+            <span class="status-indicator"></span>
+            <span id="connectionText">Connecting</span>
+          </div>
+          <button class="icon-button" id="refreshButton" type="button" aria-label="Refresh scores">
+            <svg><use href="#icon-refresh"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="page-grid">
+        <main class="main-content">
+          <section class="page-intro" aria-labelledby="pageTitle">
+            <div class="intro-copy">
+              <span class="eyebrow"><svg><use href="#icon-pulse"/></svg> Live match intelligence</span>
+              <h1 id="pageTitle">Football Match Center</h1>
+              <p id="pageDescription">Live scores, fixtures, and confirmed results from verified competition feeds.</p>
+            </div>
+            <div class="last-sync">
+              <span>Last synchronized</span>
+              <strong id="lastUpdated">Waiting for data</strong>
+            </div>
+          </section>
+
+          <section class="summary-grid" aria-label="Match summary">
+            <article class="summary-card summary-live">
+              <span class="summary-icon"><svg><use href="#icon-pulse"/></svg></span>
+              <div><strong id="summaryLive">0</strong><span>Live now</span></div>
+            </article>
+            <article class="summary-card">
+              <span class="summary-icon"><svg><use href="#icon-calendar"/></svg></span>
+              <div><strong id="summaryToday">0</strong><span>Today</span></div>
+            </article>
+            <article class="summary-card">
+              <span class="summary-icon"><svg><use href="#icon-trophy"/></svg></span>
+              <div><strong id="summaryFinished">0</strong><span>Final results</span></div>
+            </article>
+          </section>
+
+          <section class="match-panel" aria-labelledby="matchesHeading">
+            <div class="sport-switcher" role="tablist" aria-label="Choose sport">
+              <button class="sport-tab active" type="button" role="tab" aria-selected="true" data-sport="football">
+                <svg><use href="#icon-football"/></svg><span>Football</span>
+              </button>
+              <button class="sport-tab" type="button" role="tab" aria-selected="false" data-sport="mlbb">
+                <svg><use href="#icon-mlbb"/></svg><span>Mobile Legends</span>
+              </button>
+            </div>
+
+            <div class="panel-toolbar">
+              <div class="filter-tabs" role="tablist" aria-label="Match status">
+                <button class="filter-tab active" type="button" data-filter="all">All</button>
+                <button class="filter-tab" type="button" data-filter="live">Live</button>
+                <button class="filter-tab" type="button" data-filter="today">Today</button>
+                <button class="filter-tab" type="button" data-filter="results">Results</button>
+                <button class="filter-tab" type="button" data-filter="upcoming">Upcoming</button>
+              </div>
+              <label class="search-field" for="matchSearch">
+                <svg><use href="#icon-search"/></svg>
+                <input id="matchSearch" type="search" autocomplete="off" placeholder="Search team or competition">
+                <button id="clearSearch" type="button" aria-label="Clear search" hidden><svg><use href="#icon-close"/></svg></button>
+              </label>
+            </div>
+
+            <div class="feed-heading">
+              <div>
+                <h2 id="matchesHeading">Matches</h2>
+                <p id="resultSummary">Loading verified fixtures</p>
+              </div>
+              <span class="live-key"><span class="live-dot"></span> Live</span>
+            </div>
+
+            <div class="match-feed" id="matchFeed" aria-live="polite" aria-busy="true">
+              <div class="skeleton-league">
+                <span></span><span></span><span></span>
+              </div>
+              <div class="skeleton-match"></div>
+              <div class="skeleton-match"></div>
+              <div class="skeleton-match"></div>
+            </div>
+
+            <button class="load-more" id="loadMoreButton" type="button" hidden>
+              <span>Show more matches</span><svg><use href="#icon-chevron"/></svg>
+            </button>
+          </section>
+        </main>
+
+        <aside class="insight-rail" aria-label="Live overview">
+          <section class="rail-card">
+            <div class="rail-heading">
+              <div><span class="live-dot"></span><strong>Live now</strong></div>
+              <span id="railLiveCount">0</span>
+            </div>
+            <div id="railLiveMatches" class="rail-match-list">
+              <div class="rail-empty">No live matches loaded</div>
+            </div>
+          </section>
+
+          <section class="rail-card source-card">
+            <span class="source-icon"><svg><use href="#icon-signal"/></svg></span>
+            <div>
+              <strong>Automatic updates</strong>
+              <p>Live changes are checked every five seconds. Alerts follow the sport currently open on screen.</p>
+            </div>
+          </section>
+
+          <button class="back-to-top" type="button" id="backToTop">
+            <svg><use href="#icon-arrow-up"/></svg><span>Back to top</span>
+          </button>
+        </aside>
+      </div>
+    </section>
+  </div>
+
+  <nav class="mobile-navigation" aria-label="Mobile sports navigation">
+    <button class="mobile-sport active" type="button" data-sport="football">
+      <svg><use href="#icon-football"/></svg><span>Football</span>
+    </button>
+    <button class="mobile-sport" type="button" data-sport="mlbb">
+      <svg><use href="#icon-mlbb"/></svg><span>Mobile Legends</span>
+    </button>
+  </nav>
+
+  <div class="toast-region" id="toastRegion" aria-live="assertive" aria-atomic="true"></div>
+
+  <noscript>
+    <div class="noscript-message">JavaScript is required to display live scores.</div>
+  </noscript>
+  <script src="match-center.js?v=4.0"></script>
+</body>
+</html>

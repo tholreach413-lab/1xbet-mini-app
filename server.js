@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const TelegramBot = require('node-telegram-bot-api');
 const { createMobileLegendsFeed } = require('./mlbb-feed');
+const { createFootballFeed } = require('./football-feed');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -16,7 +17,9 @@ app.use((req, res, next) => {
   res.setHeader('bypass-tunnel-reminder', 'true');
   next();
 });
+app.get('/index.html', (req, res) => res.redirect(302, '/'));
 app.use(express.static(path.join(__dirname, 'public'), {
+  index: 'live.html',
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html') || filePath.endsWith('.js') || filePath.endsWith('.css')) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -48,7 +51,7 @@ function getUser(tgId, userInfo = {}) {
 app.get('/api/status', (req, res) => {
   res.json({
     status: 'online',
-    appName: '1xBet Official Mini App',
+    appName: '1X Live Match Center',
     time: new Date().toISOString(),
     webappUrl: WEBAPP_URL,
     botUsername: process.env.BOT_USERNAME || 'Checkaccount123_bot'
@@ -101,207 +104,10 @@ app.get('/api/logo-proxy', async (req, res) => {
 let cachedMatches = [];
 let lastMatchesFetch = 0;
 
+const footballFeed = createFootballFeed();
+
 async function fetchFromLiveScore() {
-  const tzOffset = 7 * 60 * 60 * 1000;
-  const localNow = new Date(Date.now() + tzOffset);
-  
-  const formatYMD = (d) => {
-    const y = d.getUTCFullYear();
-    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(d.getUTCDate()).padStart(2, '0');
-    return `${y}${m}${day}`;
-  };
-
-  const dYesterday = new Date(localNow.getTime() - 86400000);
-  const dToday = localNow;
-  const dTomorrow = new Date(localNow.getTime() + 86400000);
-  const dPlus2 = new Date(localNow.getTime() + 2 * 86400000);
-
-  const ymdYesterday = formatYMD(dYesterday);
-  const ymdToday = formatYMD(dToday);
-  const ymdTomorrow = formatYMD(dTomorrow);
-  const ymdPlus2 = formatYMD(dPlus2);
-
-  const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' };
-
-  // Fetch Soccer, Basketball, and Tennis live & daily schedules
-  const [
-    socLive, socYest, socToday, socTom, socPlus2,
-    bballLive, bballToday, bballYest,
-    tennisLive, tennisToday, tennisYest
-  ] = await Promise.allSettled([
-    // Soccer
-    fetch('https://prod-public-api.livescore.com/v1/api/app/live/soccer/0.00', { headers }),
-    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymdYesterday}/7.00`, { headers }),
-    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymdToday}/7.00`, { headers }),
-    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymdTomorrow}/7.00`, { headers }),
-    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/soccer/${ymdPlus2}/7.00`, { headers }),
-    // Basketball (NBA, EuroLeague, etc.)
-    fetch('https://prod-public-api.livescore.com/v1/api/app/live/basketball/0.00', { headers }),
-    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/basketball/${ymdToday}/7.00`, { headers }),
-    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/basketball/${ymdYesterday}/7.00`, { headers }),
-    // Tennis (ATP, WTA, Challengers)
-    fetch('https://prod-public-api.livescore.com/v1/api/app/live/tennis/0.00', { headers }),
-    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/tennis/${ymdToday}/7.00`, { headers }),
-    fetch(`https://prod-public-api.livescore.com/v1/api/app/date/tennis/${ymdYesterday}/7.00`, { headers })
-  ]);
-
-  const matches = [];
-  const seenIds = new Set();
-  const TOP_LEAGUES = [
-    'Premier League', 'LaLiga', 'Serie A', 'Bundesliga', 'Ligue 1',
-    'UEFA Champions League', 'UEFA Europa League', 'Coupe de France', 'FA Cup', 'EFL Cup', 'Copa del Rey',
-    'NBA', 'EuroLeague', 'ATP', 'WTA'
-  ];
-
-  function parseStages(stages, sportType = 'football', isLiveForced = false, dayLabel = 'Today', fallbackDate = '') {
-    const sportNameMap = {
-      football: 'Football',
-      basketball: 'Basketball',
-      tennis: 'Tennis'
-    };
-    const iconMap = {
-      football: '⚽',
-      basketball: '🏀',
-      tennis: '🎾'
-    };
-
-    for (const stage of stages || []) {
-      const rawLeague = stage.Snm || sportNameMap[sportType] || 'Match';
-      const country = stage.Cnm || '';
-      for (const ev of stage.Events || []) {
-        const uniqueId = `ls_${sportType}_${ev.Eid}`;
-        if (seenIds.has(uniqueId)) continue;
-        seenIds.add(uniqueId);
-
-        const homeName = ev.T1?.[0]?.Nm || 'Home';
-        const awayName = ev.T2?.[0]?.Nm || 'Away';
-        const homeImg = ev.T1?.[0]?.Img ? `https://lsm-static-prod.livescore.com/medium/${ev.T1[0].Img}` : '';
-        const awayImg = ev.T2?.[0]?.Img ? `https://lsm-static-prod.livescore.com/medium/${ev.T2[0].Img}` : '';
-
-        // Real kickoff time and date from LiveScore Esd (YYYYMMDDHHMMSS)
-        const esdStr = String(ev.Esd || '');
-        let kickoffTime = '';
-        let matchDateStr = fallbackDate;
-        if (esdStr.length >= 12) {
-          const hh = esdStr.slice(8, 10);
-          const mm = esdStr.slice(10, 12);
-          kickoffTime = `${hh}:${mm}`;
-          const evMonthNum = parseInt(esdStr.slice(4, 6), 10);
-          const evDayNum = parseInt(esdStr.slice(6, 8), 10);
-          const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-          matchDateStr = `${evDayNum} ${months[evMonthNum] || ''}`;
-        }
-
-        const epsStr = String(ev.Eps || '').toUpperCase();
-        const isLive = isLiveForced || ['1H', '2H', 'HT', 'ET', 'P', 'BT', '1Q', '2Q', '3Q', '4Q', 'OT', 'S1', 'S2', 'S3', 'S4', 'S5'].includes(epsStr) || (typeof ev.Eps === 'string' && ev.Eps.includes("'"));
-        const isFinished = dayLabel === 'Yesterday' || ['FT', 'AET', 'AP', 'AOT', 'ENDED', 'FINISHED'].includes(epsStr);
-        const isTop = TOP_LEAGUES.some(l => rawLeague.toLowerCase().includes(l.toLowerCase()) || country.toLowerCase().includes(l.toLowerCase()));
-
-        let timeDisplay = kickoffTime || 'VS';
-        if (isLive) {
-          timeDisplay = ev.Eps || 'LIVE';
-        } else if (isFinished) {
-          timeDisplay = 'FT';
-        } else if (ev.Eps && ev.Eps !== 'NS') {
-          timeDisplay = ev.Eps;
-        } else if (kickoffTime) {
-          timeDisplay = kickoffTime;
-        }
-
-        // Realistic sport odds
-        let homeOdd = 1.85;
-        let drawOdd = sportType === 'football' ? 3.30 : 0;
-        let awayOdd = 1.95;
-        const seed = parseInt(String(ev.Eid).slice(-3) || '10', 10);
-        if (sportType === 'football') {
-          homeOdd = +(1.45 + (seed % 10) * 0.15).toFixed(2);
-          drawOdd = +(3.10 + (seed % 7) * 0.12).toFixed(2);
-          awayOdd = +(1.85 + (seed % 13) * 0.18).toFixed(2);
-        } else if (sportType === 'basketball') {
-          homeOdd = +(1.55 + (seed % 8) * 0.10).toFixed(2);
-          drawOdd = 0;
-          awayOdd = +(1.75 + (seed % 9) * 0.11).toFixed(2);
-        } else {
-          homeOdd = +(1.40 + (seed % 7) * 0.14).toFixed(2);
-          drawOdd = 0;
-          awayOdd = +(1.80 + (seed % 8) * 0.15).toFixed(2);
-        }
-
-        matches.push({
-          id: uniqueId,
-          sport: sportType,
-          sportName: sportNameMap[sportType] || 'Sport',
-          league: country ? `${country} - ${rawLeague}` : rawLeague,
-          rawLeague: rawLeague,
-          country: country,
-          leagueIcon: iconMap[sportType] || '⚽',
-          isLive,
-          isFinished,
-          isTop,
-          day: isLive ? 'LIVE' : dayLabel,
-          dateStr: matchDateStr,
-          time: timeDisplay,
-          kickoffTime: kickoffTime || timeDisplay,
-          homeTeam: homeName,
-          homeLogo: homeImg,
-          homeScore: ev.Tr1 !== undefined ? parseInt(ev.Tr1) : null,
-          awayTeam: awayName,
-          awayLogo: awayImg,
-          awayScore: ev.Tr2 !== undefined ? parseInt(ev.Tr2) : null,
-          winner: (isFinished && ev.Tr1 !== undefined && ev.Tr2 !== undefined) ? (parseInt(ev.Tr1) > parseInt(ev.Tr2) ? homeName : (parseInt(ev.Tr2) > parseInt(ev.Tr1) ? awayName : 'Draw')) : undefined,
-          odds: {
-            home: homeOdd,
-            draw: drawOdd,
-            away: awayOdd
-          }
-        });
-      }
-    }
-  }
-
-  // Helper to extract stages
-  const extractStages = async (promiseRes) => {
-    if (promiseRes.status === 'fulfilled' && promiseRes.value.ok) {
-      try {
-        const d = await promiseRes.value.json();
-        return d.Stages || [];
-      } catch (_) {}
-    }
-    return [];
-  };
-
-  // 1. Live Football
-  parseStages(await extractStages(socLive), 'football', true, 'LIVE');
-  // 2. Live Basketball
-  parseStages(await extractStages(bballLive), 'basketball', true, 'LIVE');
-  // 3. Live Tennis
-  parseStages(await extractStages(tennisLive), 'tennis', true, 'LIVE');
-
-  // 4. Today's Matches (Football, Basketball, Tennis)
-  parseStages(await extractStages(socToday), 'football', false, 'Today');
-  parseStages(await extractStages(bballToday), 'basketball', false, 'Today');
-  parseStages(await extractStages(tennisToday), 'tennis', false, 'Today');
-
-  // 5. Tomorrow's Matches
-  parseStages(await extractStages(socTom), 'football', false, 'Tomorrow');
-
-  // 6. Upcoming Days
-  parseStages(await extractStages(socPlus2), 'football', false, 'Upcoming');
-
-  // 7. Results (Yesterday Completed Matches)
-  parseStages(await extractStages(socYest), 'football', false, 'Yesterday');
-  parseStages(await extractStages(bballYest), 'basketball', false, 'Yesterday');
-  parseStages(await extractStages(tennisYest), 'tennis', false, 'Yesterday');
-
-  // Sort: Live matches first, then Top leagues, then others
-  matches.sort((a, b) => {
-    if (a.isLive !== b.isLive) return b.isLive ? 1 : -1;
-    if (a.isTop !== b.isTop) return b.isTop ? 1 : -1;
-    return 0;
-  });
-
-  return matches;
+  return footballFeed.getMatches();
 }
 
 const mobileLegendsFeed = createMobileLegendsFeed();
@@ -314,39 +120,27 @@ async function fetchMobileLegendsMatches() {
 }
 
 let isFetchingMatches = false;
-let cachedLiveScoreMatches = [];
-let lastLiveScoreFetch = 0;
+let cachedFootballMatches = [];
 
 async function refreshMatchesBackground() {
   if (isFetchingMatches) return cachedMatches;
   isFetchingMatches = true;
   try {
-    const now = Date.now();
-    const shouldRefreshLiveScore = cachedLiveScoreMatches.length === 0 || now - lastLiveScoreFetch >= 15000;
-    const liveScorePromise = shouldRefreshLiveScore
-      ? fetchFromLiveScore()
-          .then(matches => {
-            if (matches.length > 0) {
-              cachedLiveScoreMatches = matches;
-              lastLiveScoreFetch = Date.now();
-            }
-            return cachedLiveScoreMatches;
-          })
-          .catch(error => {
-            console.warn('LiveScore refresh notice:', error.message);
-            return cachedLiveScoreMatches;
-          })
-      : Promise.resolve(cachedLiveScoreMatches);
-
-    const [liveScoreMatches, mlbbMatches] = await Promise.all([
-      liveScorePromise,
+    const [footballMatches, mlbbMatches] = await Promise.all([
+      fetchFromLiveScore().catch(error => {
+        console.warn('Football refresh notice:', error.message);
+        return cachedFootballMatches;
+      }),
       fetchMobileLegendsMatches().catch(error => {
         console.warn('MLBB refresh notice:', error.message);
         return cachedMlbbMatches;
       })
     ]);
 
-    const combined = [...(liveScoreMatches || []), ...(mlbbMatches || [])];
+    if (footballMatches.length > 0) cachedFootballMatches = footballMatches;
+    if (mlbbMatches.length > 0) cachedMlbbMatches = mlbbMatches;
+
+    const combined = [...cachedFootballMatches, ...cachedMlbbMatches];
     if (combined.length > 0) {
       cachedMatches = combined;
       lastMatchesFetch = Date.now();
@@ -360,39 +154,76 @@ async function refreshMatchesBackground() {
   }
 }
 
-// Serve the latest completed snapshot while a single background refresh keeps it current.
+// Serve Football and Mobile Legends only, from the latest completed provider snapshot.
 app.get('/api/matches', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   try {
     const now = Date.now();
-    const hasLiveMlbb = cachedMatches.some(match => match.sport === 'mlbb' && match.isLive);
-    const refreshAfter = hasLiveMlbb ? 4000 : 15000;
+    const hasLiveMatch = cachedMatches.some(match => match.isLive);
+    const refreshAfter = hasLiveMatch ? 4000 : 15000;
     if (cachedMatches.length === 0 || now - lastMatchesFetch >= refreshAfter) {
       refreshMatchesBackground();
     }
 
     const requestedSport = String(req.query.sport || '').toLowerCase();
-    const matches = requestedSport
+    const allSportMatches = requestedSport === 'football' || requestedSport === 'mlbb'
       ? cachedMatches.filter(match => match.sport === requestedSport)
       : cachedMatches;
+    const summary = {
+      total: allSportMatches.length,
+      live: allSportMatches.filter(match => match.isLive).length,
+      today: allSportMatches.filter(match => match.day === 'Today' || match.isLive).length,
+      finished: allSportMatches.filter(match => match.isFinished).length,
+      upcoming: allSportMatches.filter(match => !match.isLive && !match.isFinished).length
+    };
 
-    const sourceUpdatedAt = Math.max(lastLiveScoreFetch, mobileLegendsFeed.getLastRefresh());
+    const requestedView = String(req.query.view || '').toLowerCase();
+    let matches = allSportMatches;
+    if (requestedView === 'live') {
+      matches = allSportMatches.filter(match => match.isLive);
+    } else if (requestedView === 'app' && requestedSport === 'football') {
+      const currentWindow = allSportMatches.filter(match =>
+        match.isLive || match.day === 'Today' || match.day === 'Tomorrow'
+      );
+      const currentIds = new Set(currentWindow.map(match => match.id));
+      const recentResults = allSportMatches
+        .filter(match => match.isFinished && !currentIds.has(match.id))
+        .slice(0, 120);
+      matches = [...currentWindow, ...recentResults];
+    }
+
+    const sourceUpdatedAt = requestedSport === 'football'
+      ? footballFeed.getLastRefresh()
+      : requestedSport === 'mlbb'
+        ? mobileLegendsFeed.getLastRefresh()
+        : Math.max(footballFeed.getLastRefresh(), mobileLegendsFeed.getLastRefresh());
+
     res.json({
       success: true,
       count: matches.length,
+      totalCount: allSportMatches.length,
+      liveCount: summary.live,
+      summary,
       matches,
       updatedAt: sourceUpdatedAt ? new Date(sourceUpdatedAt).toISOString() : null,
-      refreshing: isFetchingMatches
+      refreshing: isFetchingMatches,
+      sports: ['football', 'mlbb']
     });
   } catch (err) {
+    const requestedSport = String(req.query.sport || '').toLowerCase();
+    const fallbackMatches = requestedSport === 'football'
+      ? cachedFootballMatches
+      : requestedSport === 'mlbb'
+        ? cachedMlbbMatches
+        : [...cachedFootballMatches, ...cachedMlbbMatches];
     res.json({
       success: true,
-      count: cachedMlbbMatches.length,
-      matches: cachedMlbbMatches,
-      updatedAt: mobileLegendsFeed.getLastRefresh()
-        ? new Date(mobileLegendsFeed.getLastRefresh()).toISOString()
-        : null,
-      refreshing: isFetchingMatches
+      count: fallbackMatches.length,
+      liveCount: fallbackMatches.filter(match => match.isLive).length,
+      matches: fallbackMatches,
+      updatedAt: null,
+      refreshing: isFetchingMatches,
+      sports: ['football', 'mlbb']
     });
   }
 });
@@ -662,7 +493,7 @@ app.get('/api/stream/find', async (req, res) => {
         found: true,
         isLive: true,
         source: 'youtube',
-        sourceLabel: `🔴 YouTube Live (${foundLabel})`,
+        sourceLabel: `YouTube Live (${foundLabel})`,
         videoId: foundYt.videoId,
         embedUrl: `https://www.youtube.com/embed/${foundYt.videoId}?autoplay=1&mute=0&playsinline=1&rel=0`,
         availableSources: [
@@ -686,7 +517,7 @@ app.get('/api/stream/find', async (req, res) => {
           found: true,
           isLive: false,
           source: 'youtube_broadcast',
-          sourceLabel: `📹 YouTube Match Broadcast (${home} vs ${away})`,
+          sourceLabel: `YouTube Match Broadcast (${home} vs ${away})`,
           videoId: replay.videoId,
           embedUrl: `https://www.youtube.com/embed/${replay.videoId}?autoplay=1&mute=0&playsinline=1&rel=0`,
           availableSources: [
@@ -708,7 +539,7 @@ app.get('/api/stream/find', async (req, res) => {
       found: true,
       isLive: true,
       source: 'website',
-      sourceLabel: `🌐 Official Web Broadcast (${twitchChannel.toUpperCase()})`,
+      sourceLabel: `Official Web Broadcast (${twitchChannel.toUpperCase()})`,
       embedUrl: webSources[0].embedUrl,
       platform: 'twitch',
       availableSources: webSources
@@ -721,30 +552,30 @@ app.get('/api/stream/find', async (req, res) => {
       found: true,
       isLive: true,
       source: 'website',
-      sourceLabel: '🌐 Official Web Broadcast',
+      sourceLabel: 'Official Web Broadcast',
       embedUrl: `https://player.twitch.tv/?channel=${defaultTwitch}&parent=${clientHost.split(':')[0]}&autoplay=true`,
       error: err.message
     });
   }
 });
 
-// Fallback: serve frontend index.html for all non-API GET requests
+// Fallback: serve the focused Football and Mobile Legends match center.
 app.use((req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'live.html'));
 });
 
 // Start Express Server
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`====================================================`);
-  console.log(`⚽ 1xBet Mini App Server running on http://0.0.0.0:${PORT}`);
+  console.log(`1X Live server running on http://0.0.0.0:${PORT}`);
   if (process.env.RENDER_EXTERNAL_URL) {
-    console.log(`🌐 Render External URL: ${process.env.RENDER_EXTERNAL_URL}`);
+    console.log(`Render external URL: ${process.env.RENDER_EXTERNAL_URL}`);
   }
   console.log(`====================================================`);
 
   // Pre-cache matches on server boot, then keep live MLBB scores warm for all clients.
   refreshMatchesBackground().then(() => {
-    console.log(`📡 Pre-cached ${cachedMatches.length} matches (${cachedMlbbMatches.length} MLBB)`);
+    console.log(`Pre-cached ${cachedMatches.length} matches (${cachedFootballMatches.length} football, ${cachedMlbbMatches.length} MLBB)`);
   }).catch(err => {
     console.warn('Initial matches pre-cache notice:', err.message);
   });
@@ -766,27 +597,24 @@ if (BOT_TOKEN && !BOT_TOKEN.includes('REPLACE')) {
       console.warn('Bot polling notification:', err.message);
     });
 
-    console.log(`🤖 Telegram Bot connected successfully!`);
+    console.log('Telegram Bot connected successfully');
 
-    // Helper to build keyboard
+    // Match-center keyboard with direct links to the two supported sports.
     const getBotKeyboard = (appUrl) => {
       const url = appUrl || WEBAPP_URL || `http://localhost:${PORT}`;
+      const separator = url.includes('?') ? '&' : '?';
       return {
         reply_markup: {
           inline_keyboard: [
             [
               {
-                text: '🚀 Launch 1xBet Mini App',
-                web_app: { url: url }
+                text: 'Open Live Match Center',
+                web_app: { url }
               }
             ],
             [
-              { text: '💳 Instant Deposit', callback_data: 'cmd_deposit' },
-              { text: '🎁 200% Bonus', callback_data: 'cmd_bonus' }
-            ],
-            [
-              { text: '🔥 Crash (Aviator)', web_app: { url: url } },
-              { text: '💬 Support 24/7', callback_data: 'cmd_support' }
+              { text: 'Football Live', web_app: { url: `${url}${separator}sport=football` } },
+              { text: 'Mobile Legends Live', web_app: { url: `${url}${separator}sport=mlbb` } }
             ]
           ]
         }
@@ -796,57 +624,32 @@ if (BOT_TOKEN && !BOT_TOKEN.includes('REPLACE')) {
     // /start command
     bot.onText(/\/start/, async (msg) => {
       const chatId = msg.chat.id;
-      const firstName = msg.from.first_name || 'Champion';
-      const user = getUser(msg.from.id, msg.from);
+      const firstName = msg.from.first_name || 'Viewer';
+      getUser(msg.from.id, msg.from);
 
-      const welcomeText = 
-`⚽🔥 *WELCOME TO 1xBET MINI APP* 🔥⚽
+      const welcomeText =
+`*1X LIVE MATCH CENTER*
 
-Hello *${firstName}*! Experience the world's #1 Sportsbook & Casino directly inside Telegram:
+Hello *${firstName}*. Follow verified live scores in one focused app.
 
-🏆 *LIVE SPORTS BETTING*
-• Top odds on Champions League, Premier League, NBA & Tennis
-• Real-time match scores & instant bet settlements
-• +10% Odds Boost on Accumulator of the Day
+*FOOTBALL*
+- Live score and match-minute updates
+- Confirmed full-time results and winners
+- Fixtures across major competitions
 
-🚀 *1xGAMES & CASINO*
-• *Aviator Crash*: Cash out up to x10,000 multiplier
-• *1xSlots*: Spin the 777 Mega Jackpot
-• Roulette, Apple of Fortune & Dice
+*MOBILE LEGENDS*
+- Live series scores
+- Best-of format and winner confirmation
+- Professional tournament schedules
 
-💳 *INSTANT PAYMENTS*
-• PayLink Bank Gateway & Direct Account Transfer
-• Telebirr, Mobile Money & USDT TRC20 Crypto
-• Instant automated deposits & fast payouts
+Alerts automatically follow the sport currently open on your screen.
 
-🎁 *WELCOME PROMOTION:*
-Get a *200% First Deposit Match Bonus* on your first transfer!
-
-👇 *Tap the button below to enter the 1xBet Mini App:*`;
+Open the match center below.`;
 
       bot.sendMessage(chatId, welcomeText, {
         parse_mode: 'Markdown',
         ...getBotKeyboard()
       });
-    });
-
-    // Callback queries
-    bot.on('callback_query', (query) => {
-      const chatId = query.message.chat.id;
-      if (query.data === 'cmd_deposit') {
-        bot.sendMessage(chatId, `💳 *Deposit Options Available:*\n\n1. *PayLink Bank Gateway* (Instant 0% fee)\n2. *Commercial / Awash Bank Transfer*\n3. *Telebirr Mobile Payment*\n4. *USDT Crypto (TRC20)*\n\nOpen the Mini App to deposit directly into your wallet:`, {
-          parse_mode: 'Markdown',
-          ...getBotKeyboard()
-        });
-      } else if (query.data === 'cmd_bonus') {
-        bot.sendMessage(chatId, `🎁 *200% Welcome Bonus Activated!*\n\nUse promo code: *1XVIP*\nDeposit any amount from $10 to $500 to double your playing funds instantly!`, {
-          parse_mode: 'Markdown',
-          ...getBotKeyboard()
-        });
-      } else if (query.data === 'cmd_support') {
-        bot.sendMessage(chatId, `💬 *1xBet Support 24/7*\n\nOur betting and cashier support agents are online 24/7.\nContact @Checkaccount123_bot support desk anytime.`);
-      }
-      bot.answerCallbackQuery(query.id);
     });
 
     // Function to configure Menu Button once public URL is known
@@ -855,11 +658,11 @@ Get a *200% First Deposit Match Bonus* on your first transfer!
         await bot.setChatMenuButton({
           menu_button: {
             type: 'web_app',
-            text: '⚽ 1xBet App',
+            text: '1X Live',
             web_app: { url }
           }
         });
-        console.log(`✅ Telegram Chat Menu Button updated with URL: ${url}`);
+        console.log(`Telegram menu button updated: ${url}`);
       } catch (err) {
       }
     };
