@@ -667,7 +667,10 @@ function renderMatches() {
               ${group.country ? `<span class="ls-league-country">${group.country}</span>` : ''}
             </div>
           </div>
-          <span class="ls-league-arrow">›</span>
+          <button class="ls-league-stream-quick-btn" onclick="event.stopPropagation(); switchTab('stream')" title="Watch 1xTV Live Streams">
+            <span class="pulsing-dot-red"></span>
+            <span>LIVE STREAM</span>
+          </button>
         </div>
         <div class="ls-matches-list">
           ${group.matches.map(m => generateMatchCardHTML(m)).join('')}
@@ -722,7 +725,10 @@ function renderLiveMatches() {
               ${group.country ? `<span class="ls-league-country">${group.country}</span>` : ''}
             </div>
           </div>
-          <span class="ls-league-arrow">›</span>
+          <button class="ls-league-stream-quick-btn" onclick="event.stopPropagation(); switchTab('stream')" title="Watch 1xTV Live Streams">
+            <span class="pulsing-dot-red"></span>
+            <span>LIVE STREAM</span>
+          </button>
         </div>
         <div class="ls-matches-list">
           ${group.matches.map(m => generateMatchCardHTML(m)).join('')}
@@ -850,11 +856,11 @@ function generateMatchCardHTML(m) {
         </button>
       </div>
 
-      <!-- Live Stream Quick Launch Action Button -->
+      <!-- Super Prominent Watch Live Stream Button -->
       <button class="ls-watch-stream-btn ${m.isLive ? 'is-live-btn' : ''}" onclick="event.stopPropagation(); watchMatchStream('${m.id}')">
         <span class="stream-btn-icon">${m.isLive ? '<span class="pulsing-dot-red"></span>' : '▶'}</span>
-        <span>${m.isLive ? 'Watch Real-Time Live Stream' : 'Watch Match Broadcast / Replay'}</span>
-        ${m.streamChannel ? `<small style="opacity:0.85;font-size:9.5px;margin-left:4px;">(${m.streamChannel})</small>` : ''}
+        <span>${m.isLive ? '🔴 WATCH LIVE STREAM (YouTube & Web)' : '▶ WATCH MATCH BROADCAST / REPLAY'}</span>
+        ${m.streamChannel ? `<small style="opacity:0.95;font-size:10px;margin-left:5px;background:rgba(0,0,0,0.35);padding:2px 7px;border-radius:5px;">${m.streamChannel}</small>` : ''}
       </button>
 
       <!-- 1xBet Quick Betting Odds Strip OR Final Result Banner -->

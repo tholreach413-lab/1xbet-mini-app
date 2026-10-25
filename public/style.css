@@ -4420,5 +4420,183 @@ body {
   }
 }
 
+/* ==========================================================================
+   SUPER PROMINENT "WATCH LIVE STREAM" BUTTONS & NAVIGATION
+   ========================================================================== */
+.ls-watch-stream-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(220, 38, 38, 0.3));
+  border: 1.5px solid rgba(239, 68, 68, 0.6);
+  color: #ffffff;
+  font-family: 'Outfit', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: 4px;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ls-watch-stream-btn:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.35), rgba(220, 38, 38, 0.5));
+  border-color: #ef4444;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+}
+
+.ls-watch-stream-btn:active {
+  transform: scale(0.98);
+}
+
+.ls-watch-stream-btn.is-live-btn {
+  background: linear-gradient(135deg, #dc2626, #991b1b);
+  border-color: #f87171;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.5);
+  animation: glowLiveBtn 2s infinite alternate;
+}
+
+@keyframes glowLiveBtn {
+  0% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); }
+  100% { box-shadow: 0 0 22px rgba(239, 68, 68, 0.85); }
+}
+
+.pulsing-dot-red {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 8px #ffffff;
+  animation: pulseDotRed 1s infinite alternate;
+}
+
+@keyframes pulseDotRed {
+  0% { transform: scale(0.85); opacity: 0.7; }
+  100% { transform: scale(1.25); opacity: 1; }
+}
+
+.ls-ribbon-btn.stream-action-btn {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(185, 28, 28, 0.35));
+  border: 1.5px solid #ef4444;
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+  animation: pulseRibbonStream 2s infinite alternate;
+}
+
+@keyframes pulseRibbonStream {
+  0% { border-color: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68, 0.3); }
+  100% { border-color: #f87171; box-shadow: 0 0 16px rgba(239, 68, 68, 0.7); }
+}
+
+.nav-item.nav-stream-item {
+  position: relative;
+  color: #f87171;
+}
+
+.nav-item.nav-stream-item svg {
+  stroke: #f87171;
+}
+
+.nav-item.nav-stream-item.active {
+  color: #ef4444;
+}
+
+.nav-item.nav-stream-item.active svg {
+  stroke: #ef4444;
+  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.8));
+}
+
+.ls-league-stream-quick-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 6px;
+  padding: 3px 8px;
+  color: #fca5a5;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ls-league-stream-quick-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+.live-stream-quick-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.22), rgba(153, 27, 27, 0.4));
+  border: 1.5px solid rgba(239, 68, 68, 0.5);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 12px 14px 16px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2);
+  transition: all 0.2s ease;
+}
+
+.live-stream-quick-banner:hover {
+  border-color: #ef4444;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
+}
+
+.live-stream-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 900;
+  padding: 3px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.live-stream-banner-text {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #f4f4f5;
+  flex: 1;
+}
+
+.btn-watch-stream-now {
+  background: #ffffff;
+  color: #dc2626;
+  border: none;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease;
+}
+
+.btn-watch-stream-now:hover {
+  transform: scale(1.05);
+}
+
+
 
 
