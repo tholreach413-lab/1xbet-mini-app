@@ -471,26 +471,70 @@ function getTeamInitials(name) {
   return clean.slice(0, 2).toUpperCase() || 'FC';
 }
 
-function onCrestError(img) {
+function generateTeamBadgeSvg(teamName) {
+  const safeName = (teamName || 'FC').replace(/"/g, '&quot;');
+  const initials = getTeamInitials(teamName);
+  
+  let hash = 0;
+  for (let i = 0; i < safeName.length; i++) {
+    hash = (hash << 5) - hash + safeName.charCodeAt(i);
+    hash |= 0;
+  }
+  const hues = [
+    { c1: '#0a1128', c2: '#1e3a8a', acc1: '#f59e0b', acc2: '#38bdf8' },
+    { c1: '#18181b', c2: '#27272a', acc1: '#f97316', acc2: '#eab308' },
+    { c1: '#111827', c2: '#1f2937', acc1: '#ef4444', acc2: '#dc2626' },
+    { c1: '#2e1065', c2: '#4c1d95', acc1: '#c084fc', acc2: '#f43f5e' },
+    { c1: '#082f49', c2: '#0c4a6e', acc1: '#38bdf8', acc2: '#ffffff' },
+    { c1: '#064e3b', c2: '#047857', acc1: '#fbbf24', acc2: '#10b981' },
+    { c1: '#4a044e', c2: '#701a75', acc1: '#d946ef', acc2: '#38bdf8' },
+    { c1: '#1e1b4b', c2: '#312e81', acc1: '#a855f7', acc2: '#06b6d4' }
+  ];
+  const theme = hues[Math.abs(hash) % hues.length];
+  const uid = Math.abs(hash);
+
+  return `<svg class="ls-crest ls-crest-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" title="${safeName}">
+    <defs>
+      <linearGradient id="bg_${uid}" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="${theme.c1}"/>
+        <stop offset="100%" stop-color="${theme.c2}"/>
+      </linearGradient>
+      <linearGradient id="border_${uid}" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="${theme.acc1}"/>
+        <stop offset="100%" stop-color="${theme.acc2}"/>
+      </linearGradient>
+    </defs>
+    <path d="M50 6 C70 6 92 14 92 34 C92 64 70 88 50 96 C30 88 8 64 8 34 C8 14 30 6 50 6 Z" fill="url(#bg_${uid})" stroke="url(#border_${uid})" stroke-width="3"/>
+    <polygon points="50,20 54,32 66,32 56,40 60,52 50,44 40,52 44,40 34,32 46,32" fill="${theme.acc1}" opacity="0.95"/>
+    <rect x="20" y="58" width="60" height="20" rx="4" fill="#09090b" stroke="${theme.acc1}" stroke-width="1.2"/>
+    <text x="50" y="73" font-family="'Inter', -apple-system, sans-serif" font-weight="900" font-size="11" fill="#ffffff" text-anchor="middle">${initials}</text>
+  </svg>`;
+}
+
+function onCrestError(img, teamName) {
+  const parent = img.parentElement;
+  if (!parent) return;
   img.style.display = 'none';
-  const fallback = img.nextElementSibling;
-  if (fallback) fallback.style.display = 'inline-flex';
+  const fallback = parent.querySelector('.team-avatar-fallback');
+  if (fallback) fallback.style.display = 'none';
+  if (!parent.querySelector('.ls-crest-svg')) {
+    parent.insertAdjacentHTML('beforeend', generateTeamBadgeSvg(teamName));
+  }
 }
 
 function renderTeamCrest(logoUrl, teamName) {
   const safeName = (teamName || 'FC').replace(/"/g, '&quot;');
-  const initials = getTeamInitials(teamName);
-
-  if (logoUrl) {
+  const isGenericPlaceholder = Boolean(logoUrl && (logoUrl.includes('128x128_23.webp') || logoUrl.includes('placeholder')));
+  
+  if (logoUrl && !isGenericPlaceholder) {
     return `
       <div class="ls-crest-wrap">
-        <img src="${logoUrl}" referrerpolicy="no-referrer" class="ls-crest" alt="${safeName}" loading="lazy" onerror="onCrestError(this)">
-        <span class="team-avatar-fallback" style="display:none;">${initials}</span>
+        <img src="${logoUrl}" referrerpolicy="no-referrer" class="ls-crest" alt="${safeName}" loading="lazy" onerror="onCrestError(this, '${safeName.replace(/'/g, "\\'")}')">
       </div>`;
   }
   return `
     <div class="ls-crest-wrap">
-      <span class="team-avatar-fallback">${initials}</span>
+      ${generateTeamBadgeSvg(teamName)}
     </div>`;
 }
 
@@ -752,8 +796,15 @@ function generateMatchCardHTML(m) {
   const hScore = m.homeScore !== null && m.homeScore !== undefined ? m.homeScore : null;
   const aScore = m.awayScore !== null && m.awayScore !== undefined ? m.awayScore : null;
 
-  const homeWon = isFinished && hScore !== null && aScore !== null && hScore > aScore;
-  const awayWon = isFinished && hScore !== null && aScore !== null && aScore > hScore;
+  // Real winner determination: Check m.winner directly OR compute from scores
+  const homeWon = isFinished && (
+    (m.winner && m.winner.toLowerCase() === (m.homeTeam || '').toLowerCase()) ||
+    (hScore !== null && aScore !== null && hScore > aScore)
+  );
+  const awayWon = isFinished && (
+    (m.winner && m.winner.toLowerCase() === (m.awayTeam || '').toLowerCase()) ||
+    (hScore !== null && aScore !== null && aScore > hScore)
+  );
 
   // LiveScore time & score pill (Exact LiveScore formatting with MLBB 2/0, 1/0 game scores)
   let liveScoreTimeHTML = '';
@@ -789,21 +840,43 @@ function generateMatchCardHTML(m) {
       </div>`;
   }
 
+  // Live leading / tied badges
+  let homeLiveBadge = '';
+  let awayLiveBadge = '';
+  if (m.isLive && hScore !== null && aScore !== null) {
+    const liveScoreStr = isMlbb ? (m.scoreSlash || `${hScore}/${aScore}`) : `${hScore}-${aScore}`;
+    if (hScore > aScore) {
+      homeLiveBadge = `<span class="ls-live-leading-badge">⚡ Leading ${liveScoreStr}</span>`;
+    } else if (aScore > hScore) {
+      awayLiveBadge = `<span class="ls-live-leading-badge">⚡ Leading ${liveScoreStr}</span>`;
+    } else if (hScore === aScore && (hScore > 0 || aScore > 0)) {
+      homeLiveBadge = `<span class="ls-live-tied-badge">⚡ Tied ${liveScoreStr}</span>`;
+      awayLiveBadge = `<span class="ls-live-tied-badge">⚡ Tied ${liveScoreStr}</span>`;
+    }
+  }
+
+  const homeWinnerBadge = homeWon ? `<span class="ls-winner-badge">👑 WINNER</span>` : '';
+  const awayWinnerBadge = awayWon ? `<span class="ls-winner-badge">👑 WINNER</span>` : '';
+
   // Odds Strip OR Completed Match Result Summary
   let bottomStripHTML = '';
   if (isFinished) {
-    let outcomeText = 'Draw';
-    if (homeWon) outcomeText = `${m.homeTeam} Won`;
-    else if (awayWon) outcomeText = `${m.awayTeam} Won`;
+    let outcomeText = 'Match Completed (Draw)';
+    const scoreDisplay = isMlbb ? (m.scoreSlash || `${hScore ?? 0}/${aScore ?? 0}`) : `${hScore ?? 0} : ${aScore ?? 0}`;
+    if (homeWon || (m.winner && m.winner.toLowerCase() === (m.homeTeam || '').toLowerCase())) {
+      outcomeText = `🏆 ${m.homeTeam} Won Series (${scoreDisplay})`;
+    } else if (awayWon || (m.winner && m.winner.toLowerCase() === (m.awayTeam || '').toLowerCase())) {
+      outcomeText = `🏆 ${m.awayTeam} Won Series (${scoreDisplay})`;
+    }
 
     bottomStripHTML = `
       <div class="ls-finished-summary">
         <div class="ls-ft-badge-box">
           <svg class="ui-icon ui-icon-xs stroke" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-          <span>FULL TIME RESULT</span>
+          <span>OFFICIAL FINAL RESULT</span>
         </div>
-        <div class="ls-ft-outcome">${outcomeText}</div>
-        <div class="ls-ft-score-pill">${hScore ?? 0} : ${aScore ?? 0}</div>
+        <div class="ls-ft-outcome" style="font-weight:800;color:#fbbf24;">${outcomeText}</div>
+        <div class="ls-ft-score-pill">${scoreDisplay}</div>
       </div>
     `;
   } else {
@@ -838,9 +911,9 @@ function generateMatchCardHTML(m) {
     `;
   }
 
-    const boTag = isMlbb && m.bo ? `<span class="ls-mlbb-bo-tag">${m.bo}</span>` : '';
+  const boTag = isMlbb && m.bo ? `<span class="ls-mlbb-bo-tag">${m.bo}</span>` : '';
 
-    return `
+  return `
     <div class="ls-match-row ${m.isLive ? 'is-live-row' : ''} ${isFinished ? 'is-finished-row' : ''}" id="card_${m.id}" onclick="watchMatchStream('${m.id}')" style="cursor:pointer;">
       <!-- Live Orange Left Minute Box if live -->
       ${m.isLive ? `<div class="ls-live-side-pill">${m.time}</div>` : ''}
@@ -848,13 +921,17 @@ function generateMatchCardHTML(m) {
       <!-- Team vs Team Center Row (Exact LiveScore Layout) -->
       <div class="ls-match-core">
         <div class="ls-team-box home">
-          <span class="ls-team-name ${homeWon ? 'winner' : (awayWon ? 'loser' : '')}">${m.homeTeam}${boTag}</span>
+          <span class="ls-team-name ${homeWon ? 'winner' : (awayWon ? 'loser' : '')}">
+            ${homeWinnerBadge}${homeLiveBadge}${m.homeTeam}${boTag}
+          </span>
           ${homeLogoHTML}
         </div>
         ${liveScoreTimeHTML}
         <div class="ls-team-box away">
           ${awayLogoHTML}
-          <span class="ls-team-name ${awayWon ? 'winner' : (homeWon ? 'loser' : '')}">${m.awayTeam}</span>
+          <span class="ls-team-name ${awayWon ? 'winner' : (homeWon ? 'loser' : '')}">
+            ${m.awayTeam}${awayWinnerBadge}${awayLiveBadge}
+          </span>
         </div>
         <button class="ls-star-fav" onclick="event.stopPropagation(); this.classList.toggle('fav-active')" title="Favorite">
           <svg class="star-icon-svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>

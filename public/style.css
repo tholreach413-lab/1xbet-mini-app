@@ -834,6 +834,60 @@ body {
   opacity: 0.65;
 }
 
+.ls-winner-badge {
+  background: linear-gradient(135deg, #d97706, #fbbf24);
+  color: #09090b !important;
+  font-size: 8px;
+  font-weight: 900;
+  padding: 1.5px 5.5px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2.5px;
+  margin: 0 4px;
+  letter-spacing: 0.4px;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.45);
+  vertical-align: middle;
+}
+
+.ls-live-leading-badge {
+  background: rgba(56, 189, 248, 0.16);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  color: #38bdf8 !important;
+  font-size: 8px;
+  font-weight: 800;
+  padding: 1.5px 5.5px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0 4px;
+  vertical-align: middle;
+}
+
+.ls-live-tied-badge {
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  color: #fbbf24 !important;
+  font-size: 8px;
+  font-weight: 800;
+  padding: 1.5px 5.5px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0 4px;
+  vertical-align: middle;
+}
+
+.ls-crest-svg {
+  width: 22px;
+  height: 22px;
+  display: inline-block;
+  vertical-align: middle;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+}
+
 .ls-finished-summary {
   display: flex;
   align-items: center;
