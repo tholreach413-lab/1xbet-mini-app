@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const TelegramBot = require('node-telegram-bot-api');
+const { createMobileLegendsFeed } = require('./mlbb-feed');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -303,761 +304,46 @@ async function fetchFromLiveScore() {
   return matches;
 }
 
-const OFFICIAL_MLBB_LOGOS = {
-  'yangon galacticos': '/logos/yangon_galacticos.svg',
-  'team secret': '/logos/team_secret.svg',
-  'see you soon': '/logos/see_you_soon.svg',
-  'tnr esports': '/logos/tnr_esports.svg',
-  'evil': '/logos/evil.svg',
-  'absolute zero': '/logos/absolute_zero.svg',
-  'team falcons ph': '/logos/team_falcons.svg',
-  'team falcons': '/logos/team_falcons.svg',
-  'aurora gaming ph': '/logos/aurora_gaming.svg',
-  'aurora gaming': '/logos/aurora_gaming.svg',
-  'pro esports': '/logos/pro_esports.svg',
-  'vigor apex': '/logos/vigor_apex.svg',
-  'pcific esports': '/logos/pcific_esports.svg',
-  'boostgate esports': '/logos/boostgate_esports.svg',
-  'team flash kh': '/logos/team_flash.svg',
-  'team flash': '/logos/team_flash.svg',
-  'team rvz': '/logos/team_rvz.svg',
-  'galaxy legends': '/logos/galaxy_legends.svg',
-  'fut esports': '/logos/fut_esports.svg',
-  'bushido wildcats': '/logos/bushido_wildcats.svg',
-  'dia ozarox esports': '/logos/dia_ozarox.svg',
-  'dia ozarox': '/logos/dia_ozarox.svg',
-  'titan esports club': '/logos/titan_esports.svg',
-  'titan esports': '/logos/titan_esports.svg',
-  'team liquid ph': '/logos/team_liquid.svg',
-  'team liquid': '/logos/team_liquid.svg',
-  'bigetron my by vit': '/logos/bigetron.svg',
-  'bigetron my': '/logos/bigetron.svg',
-  'bigetron': '/logos/bigetron.svg',
-  'invictus gaming': '/logos/invictus_gaming.svg',
-  'fnatic onic': '/logos/fnatic_onic.svg',
-  'echo': '/logos/echo_ph.svg',
-  'blacklist international': '/logos/blacklist_intl.svg',
-  'rrq hoshi': '/logos/rrq_hoshi.svg',
-  'evos glory': '/logos/evos_glory.svg',
-  'evil eye esports': '/logos/evil.svg',
-  'galaxy phoenix': '/logos/galaxy_legends.svg',
-  'team vamos': '/logos/team_falcons.svg'
-};
+const mobileLegendsFeed = createMobileLegendsFeed();
+let cachedMlbbMatches = [];
 
-function getTeamLogoUrl(teamName) {
-  if (!teamName) return '';
-  const key = teamName.toLowerCase().trim();
-  for (const [k, url] of Object.entries(OFFICIAL_MLBB_LOGOS)) {
-    if (key.includes(k) || k.includes(key)) {
-      return url;
-    }
-  }
-  return '';
-}
-
-const AUTHENTIC_MLBB_MATCHES = [
-  {
-    id: 'mlbb_lq_live_1',
-    sport: 'mlbb',
-    sportSub: 'esports',
-    sportName: 'Mobile Legends (MLBB)',
-    homeTeam: 'See You Soon',
-    awayTeam: 'TNR Esports',
-    homeLogo: getTeamLogoUrl('See You Soon'),
-    awayLogo: getTeamLogoUrl('TNR Esports'),
-    homeScore: 1,
-    awayScore: 0,
-    scoreSlash: '1/0',
-    rawLeague: 'MPL Cambodia Season 11 - Regular Season Week 4 • Bo3',
-    league: 'MPL Cambodia Season 11',
-    country: '🇰🇭 Cambodia',
-    leagueIcon: '🎮',
-    bo: 'Bo3',
-    isLive: true,
-    isFinished: false,
-    isTop: true,
-    day: 'Today',
-    time: 'LIVE 1/0 (Bo3)',
-    timestamp: Date.now() - 1200000,
-    streamChannel: 'MPL Cambodia',
-    streamInfo: {
-      channel: 'MPL Cambodia',
-      query: 'MPL Cambodia live'
-    },
-    odds: { home: 1.35, draw: 0, away: 2.80 },
-    sourceUrl: '/mobilelegends/MPL/Cambodia/Season_11/Regular_Season#RS:_Week_4'
-  },
-  {
-    id: 'mlbb_lq_live_2',
-    sport: 'mlbb',
-    sportSub: 'esports',
-    sportName: 'Mobile Legends (MLBB)',
-    homeTeam: 'Team Falcons PH',
-    awayTeam: 'Aurora Gaming PH',
-    homeLogo: getTeamLogoUrl('Team Falcons PH'),
-    awayLogo: getTeamLogoUrl('Aurora Gaming PH'),
-    homeScore: 1,
-    awayScore: 1,
-    scoreSlash: '1/1',
-    rawLeague: 'MPL Philippines Season 18 • Bo3',
-    league: 'MPL Philippines Season 18',
-    country: '🇵🇭 Philippines',
-    leagueIcon: '🎮',
-    bo: 'Bo3',
-    isLive: true,
-    isFinished: false,
-    isTop: true,
-    day: 'Today',
-    time: 'LIVE 1/1 (Bo3)',
-    timestamp: Date.now() - 2400000,
-    streamChannel: 'MPL Philippines',
-    streamInfo: {
-      channel: 'MPL Philippines',
-      query: 'MPL Philippines live'
-    },
-    odds: { home: 1.85, draw: 0, away: 1.90 },
-    sourceUrl: '/mobilelegends/MPL/Philippines/Season_18'
-  },
-  {
-    id: 'mlbb_lq_res_1',
-    sport: 'mlbb',
-    sportSub: 'esports',
-    sportName: 'Mobile Legends (MLBB)',
-    homeTeam: 'Yangon Galacticos',
-    awayTeam: 'Team Secret',
-    homeLogo: getTeamLogoUrl('Yangon Galacticos'),
-    awayLogo: getTeamLogoUrl('Team Secret'),
-    homeScore: 3,
-    awayScore: 1,
-    scoreSlash: '3/1',
-    rawLeague: 'MSL Myanmar Season 4 - Playoffs • Bo5',
-    league: 'MSL Myanmar Season 4 - Playoffs',
-    country: '🇲🇲 Myanmar',
-    leagueIcon: '🎮',
-    bo: 'Bo5',
-    isLive: false,
-    isFinished: true,
-    winner: 'Yangon Galacticos',
-    isTop: true,
-    day: 'Today',
-    time: 'FT 3/1',
-    timestamp: Date.now() - 7200000,
-    streamChannel: 'MSL Myanmar',
-    streamInfo: {
-      channel: 'MSL Myanmar',
-      query: 'MSL Myanmar live'
-    },
-    odds: { home: 1.45, draw: 0, away: 2.55 },
-    sourceUrl: '/mobilelegends/MLBB_Super_League/Myanmar/Season_4/Playoffs#Playoffs'
-  },
-  {
-    id: 'mlbb_lq_res_2',
-    sport: 'mlbb',
-    sportSub: 'esports',
-    sportName: 'Mobile Legends (MLBB)',
-    homeTeam: 'Evil',
-    awayTeam: 'Absolute Zero',
-    homeLogo: getTeamLogoUrl('Evil'),
-    awayLogo: getTeamLogoUrl('Absolute Zero'),
-    homeScore: 3,
-    awayScore: 0,
-    scoreSlash: '3/0',
-    rawLeague: 'MPL Singapore Season 12 - Playoffs • Bo5',
-    league: 'MPL Singapore Season 12 - Playoffs',
-    country: '🇸🇬 Singapore',
-    leagueIcon: '🎮',
-    bo: 'Bo5',
-    isLive: false,
-    isFinished: true,
-    winner: 'Evil',
-    isTop: true,
-    day: 'Today',
-    time: 'FT 3/0',
-    timestamp: Date.now() - 10800000,
-    streamChannel: 'MPL Singapore',
-    streamInfo: {
-      channel: 'MPL Singapore',
-      query: 'MPL Singapore live'
-    },
-    odds: { home: 1.40, draw: 0, away: 2.65 },
-    sourceUrl: '/mobilelegends/MPL/Singapore/Season_12/Playoffs#Playoffs'
-  },
-  {
-    id: 'mlbb_lq_res_3',
-    sport: 'mlbb',
-    sportSub: 'esports',
-    sportName: 'Mobile Legends (MLBB)',
-    homeTeam: 'PRO Esports',
-    awayTeam: 'Vigor Apex',
-    homeLogo: getTeamLogoUrl('PRO Esports'),
-    awayLogo: getTeamLogoUrl('Vigor Apex'),
-    homeScore: 2,
-    awayScore: 0,
-    scoreSlash: '2/0',
-    rawLeague: 'MPL Cambodia Season 11 • Bo3',
-    league: 'MPL Cambodia Season 11',
-    country: '🇰🇭 Cambodia',
-    leagueIcon: '🎮',
-    bo: 'Bo3',
-    isLive: false,
-    isFinished: true,
-    winner: 'PRO Esports',
-    isTop: true,
-    day: 'Today',
-    time: 'FT 2/0',
-    timestamp: Date.now() - 14400000,
-    streamChannel: 'MPL Cambodia',
-    streamInfo: {
-      channel: 'MPL Cambodia',
-      query: 'MPL Cambodia live'
-    },
-    odds: { home: 1.30, draw: 0, away: 3.10 },
-    sourceUrl: '/mobilelegends/MPL/Cambodia/Season_11/Regular_Season'
-  },
-  {
-    id: 'mlbb_lq_res_4',
-    sport: 'mlbb',
-    sportSub: 'esports',
-    sportName: 'Mobile Legends (MLBB)',
-    homeTeam: 'PCIFIC Esports',
-    awayTeam: 'Boostgate Esports',
-    homeLogo: getTeamLogoUrl('PCIFIC Esports'),
-    awayLogo: getTeamLogoUrl('Boostgate Esports'),
-    homeScore: 2,
-    awayScore: 1,
-    scoreSlash: '2/1',
-    rawLeague: 'MTC Turkiye Championship Season 8 • Bo3',
-    league: 'MTC Turkiye Championship Season 8',
-    country: '🇹🇷 Türkiye',
-    leagueIcon: '🎮',
-    bo: 'Bo3',
-    isLive: false,
-    isFinished: true,
-    winner: 'PCIFIC Esports',
-    isTop: true,
-    day: 'Today',
-    time: 'FT 2/1',
-    timestamp: Date.now() - 18000000,
-    streamChannel: 'MTC Turkiye',
-    streamInfo: {
-      channel: 'MTC Turkiye',
-      query: 'MTC Turkiye live'
-    },
-    odds: { home: 1.65, draw: 0, away: 2.15 },
-    sourceUrl: '/mobilelegends/MTC/Turkiye/Season_8'
-  },
-  {
-    id: 'mlbb_lq_up_1',
-    sport: 'mlbb',
-    sportSub: 'esports',
-    sportName: 'Mobile Legends (MLBB)',
-    homeTeam: 'Team Flash KH',
-    awayTeam: 'Team RVZ',
-    homeLogo: getTeamLogoUrl('Team Flash KH'),
-    awayLogo: getTeamLogoUrl('Team RVZ'),
-    homeScore: null,
-    awayScore: null,
-    scoreSlash: undefined,
-    rawLeague: 'MPL Cambodia Season 11 - Regular Season Week 4 • Bo3',
-    league: 'MPL Cambodia Season 11',
-    country: '🇰🇭 Cambodia',
-    leagueIcon: '🎮',
-    bo: 'Bo3',
-    isLive: false,
-    isFinished: false,
-    isTop: true,
-    day: 'Today',
-    time: '04:00 PM',
-    timestamp: Date.now() + 7200000,
-    streamChannel: 'MPL Cambodia',
-    streamInfo: {
-      channel: 'MPL Cambodia',
-      query: 'MPL Cambodia live'
-    },
-    odds: { home: 1.55, draw: 0, away: 2.30 },
-    sourceUrl: '/mobilelegends/MPL/Cambodia/Season_11/Regular_Season'
-  }
-];
-let cachedMlbbMatches = [...AUTHENTIC_MLBB_MATCHES];
-let lastMlbbFetch = 0;
-
-function cleanMlbbTeam(raw) {
-  if (!raw) return null;
-  const clean = raw.replace(/ \(page does not exist\)/g, '').replace(/_/g, ' ').replace(/#.*$/, '').trim();
-  if (/Season \d+|Playoffs|Regular Season|Championship|Group \w+|Qualifier|Tournament|\/mobilelegends|Special:Stream/i.test(clean)) return null;
-  if (clean.length < 2 || clean.toLowerCase() === 'tbd') return null;
-  return clean;
-}
-
-function detectCountryFromLeague(league) {
-  const l = (league || '').toLowerCase();
-  if (l.includes('cambodia') || l.includes('kh')) return { country: 'Cambodia', flag: '🇰🇭' };
-  if (l.includes('philippines') || l.includes('ph')) return { country: 'Philippines', flag: '🇵🇭' };
-  if (l.includes('indonesia') || l.includes('id')) return { country: 'Indonesia', flag: '🇮🇩' };
-  if (l.includes('myanmar') || l.includes('msl')) return { country: 'Myanmar', flag: '🇲🇲' };
-  if (l.includes('singapore') || l.includes('sg')) return { country: 'Singapore', flag: '🇸🇬' };
-  if (l.includes('malaysia') || l.includes('my') || l.includes('mal')) return { country: 'Malaysia', flag: '🇲🇾' };
-  if (l.includes('turkiye') || l.includes('turkey') || l.includes('mtc')) return { country: 'Türkiye', flag: '🇹🇷' };
-  if (l.includes('mena') || l.includes('arab')) return { country: 'MENA', flag: '🌍' };
-  if (l.includes('latam') || l.includes('brazil')) return { country: 'LATAM', flag: '🌎' };
-  if (l.includes('world') || l.includes('m-series') || l.includes('m6') || l.includes('m5') || l.includes('msc')) return { country: 'International', flag: '🏆' };
-  return { country: 'MLBB Official', flag: '🎮' };
-}
-
-function getOfficialChannel(league, homeTeam, awayTeam) {
-  const text = `${league || ''} ${homeTeam || ''} ${awayTeam || ''}`.toLowerCase();
-  if (text.includes('cambodia')) return 'MPL Cambodia';
-  if (text.includes('philippines')) return 'MPL Philippines';
-  if (text.includes('singapore')) return 'MPL Singapore';
-  if (text.includes('indonesia')) return 'MPL Indonesia';
-  if (text.includes('myanmar') || text.includes('msl')) return 'MSL Myanmar';
-  if (text.includes('malaysia')) return 'MPL Malaysia';
-  if (text.includes('turkiye') || text.includes('mtc')) return 'MTC Turkiye';
-  return 'Mobile Legends: Bang Bang Official';
-}
-
-const cachedBracketScores = new Map([
-  ['mlbb_super_league/myanmar/season_4/playoffs_yangon galacticos_team secret', { time: Date.now(), scores: { homeScore: 2, awayScore: 0 } }]
-]);
-
-// Real-Time Live Tournament Bracket Score Resolver (Fetches exact 2/0, 2/1, 2/2 game scores from live bracket)
-async function getLiveBracketScore(tournamentPage, homeTeam, awayTeam) {
-  if (!tournamentPage || !homeTeam || !awayTeam) return null;
-  const pageName = tournamentPage.replace(/^\/mobilelegends\//, '').replace(/#.*$/, '');
-  const key = `${pageName}_${homeTeam}_${awayTeam}`.toLowerCase();
-  const cached = cachedBracketScores.get(key);
-  const now = Date.now();
-  if (cached && (now - cached.time < 30000)) {
-    return cached.scores;
-  }
-
-  const headers = { 'User-Agent': '1xBetMiniApp/2.0 (contact: admin@1xbet-bot.com)' };
-  try {
-    const url = `https://liquipedia.net/mobilelegends/api.php?action=parse&page=${encodeURIComponent(pageName)}&prop=text&format=json`;
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(3000) });
-    if (!res.ok) {
-      return cached ? cached.scores : null;
-    }
-    const data = await res.json();
-    const html = data?.parse?.text?.['*'] || '';
-
-    let searchPos = 0;
-    while (true) {
-      const idx = html.indexOf(homeTeam, searchPos);
-      if (idx === -1) break;
-      const window = html.slice(Math.max(0, idx - 800), idx + 2500);
-      if (window.includes(awayTeam)) {
-        const homeIdx = window.indexOf(homeTeam);
-        const awayIdx = window.indexOf(awayTeam);
-        const scores = [...window.matchAll(/class="match-info-opponent-score">(\d+)<\/span>/g)].map(m => parseInt(m[1], 10));
-        if (scores.length >= 2) {
-          let hScore = scores[0];
-          let aScore = scores[1];
-          if (homeIdx > awayIdx) {
-            hScore = scores[1];
-            aScore = scores[0];
-          }
-          const resScores = { homeScore: hScore, awayScore: aScore };
-          cachedBracketScores.set(key, { time: now, scores: resScores });
-          return resScores;
-        }
-      }
-      searchPos = idx + homeTeam.length;
-    }
-  } catch (e) {
-    console.warn('Live bracket score fetch notice:', e.message);
-  }
-  return cached ? cached.scores : null;
-}
-
-// 100% REAL Live, Upcoming & Finished Mobile Legends Matches from Liquipedia & GosuGamers Official Feeds
 async function fetchMobileLegendsMatches() {
-  const now = Date.now();
-  const hasLiveMatches = cachedMlbbMatches.some(m => m.isLive);
-  const cacheTtl = hasLiveMatches ? 5000 : 20000; // 5-second fast TTL for active live matches
-  if (cachedMlbbMatches.length > 0 && (now - lastMlbbFetch < cacheTtl)) {
-    return cachedMlbbMatches;
-  }
-
-  const matches = [];
-  const seenMatches = new Set();
-  const headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-  };
-
-  // 1. Fetch Liquipedia Matches First (100% authentic tournament names, exact kickoff timestamps, Bo3/Bo5/Bo7, team logos, and official streams)
-  try {
-    const res = await fetch('https://liquipedia.net/mobilelegends/api.php?action=parse&page=Liquipedia:Matches&prop=text&format=json', {
-      headers: { 'User-Agent': '1xBetMiniApp/2.0 (contact: admin@1xbet-bot.com)' },
-      signal: AbortSignal.timeout(3500)
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const html = data?.parse?.text?.['*'] || '';
-      const matchBlocks = html.split('class="match-info"').slice(1);
-
-      for (let i = 0; i < matchBlocks.length; i++) {
-        const block = matchBlocks[i];
-        const opponentSplits = block.split('class="match-info-header-opponent');
-        if (opponentSplits.length < 3) continue;
-
-        const leftPart = opponentSplits[1];
-        const rightPart = opponentSplits[2];
-
-        const leftTitleMatch = leftPart.match(/<span class="team-template-image-icon[^"]*"><a[^>]+title="([^"]+)"/)
-          || leftPart.match(/<span class="name"[^>]*><a[^>]+title="([^"]+)"/)
-          || leftPart.match(/<a[^>]+title="([^"]+)"/);
-
-        const rightTitleMatch = rightPart.match(/<span class="team-template-image-icon[^"]*"><a[^>]+title="([^"]+)"/)
-          || rightPart.match(/<span class="name"[^>]*><a[^>]+title="([^"]+)"/)
-          || rightPart.match(/<a[^>]+title="([^"]+)"/);
-
-        const homeTeam = cleanMlbbTeam(leftTitleMatch?.[1]);
-        const awayTeam = cleanMlbbTeam(rightTitleMatch?.[1]);
-
-        if (!homeTeam || !awayTeam || homeTeam === awayTeam) continue;
-
-        const pairKey = `${homeTeam.toLowerCase()}__${awayTeam.toLowerCase()}`;
-        if (seenMatches.has(pairKey)) continue;
-        seenMatches.add(pairKey);
-
-        const leftImgMatch = leftPart.match(/<img[^>]+src="([^"]+)"/);
-        const rightImgMatch = rightPart.match(/<img[^>]+src="([^"]+)"/);
-        const rawHomeImg = leftImgMatch ? (leftImgMatch[1].startsWith('http') ? leftImgMatch[1] : 'https://liquipedia.net' + leftImgMatch[1]) : '';
-        const rawAwayImg = rightImgMatch ? (rightImgMatch[1].startsWith('http') ? rightImgMatch[1] : 'https://liquipedia.net' + rightImgMatch[1]) : '';
-        const homeLogo = rawHomeImg ? `/api/logo-proxy?url=${encodeURIComponent(rawHomeImg)}` : '';
-        const awayLogo = rawAwayImg ? `/api/logo-proxy?url=${encodeURIComponent(rawAwayImg)}` : '';
-
-        // Tournament
-        const tourMatch = block.match(/class="match-info-tournament-name"[\s\S]*?<a[^>]*><span>([^<]+)<\/span>/)
-          || block.match(/class="match-info-tournament"[\s\S]*?<a[^>]+title="([^"]+)"/);
-
-        let tournament = 'MLBB Professional League';
-        if (tourMatch) {
-          tournament = tourMatch[1].replace(/ \(page does not exist\)/g, '').replace(/#.*$/, '').replace(/_/g, ' ').trim();
-        }
-
-        // Tournament bracket subpage href
-        const tourSectionMatch = block.match(/class="match-info-tournament[^"]*"[\s\S]*?(?:<\/div>|<\/span><\/span>)/);
-        const tourHrefMatch = tourSectionMatch ? tourSectionMatch[0].match(/href="(\/mobilelegends\/[^"]+)"/) : null;
-        const tournamentHref = tourHrefMatch ? tourHrefMatch[1] : '';
-
-        // Format: Bo3, Bo5, Bo7
-        const boMatch = block.match(/class="match-info-header-scoreholder-lower">\(Bo(\d+)\)<\/span>/);
-        const bo = boMatch ? `Bo${boMatch[1]}` : 'Bo3';
-        const boNum = boMatch ? parseInt(boMatch[1], 10) : 3;
-        const winThreshold = Math.ceil(boNum / 2);
-
-        // Real Scores
-        const sMatches = [...block.matchAll(/class="match-info-header-scoreholder-score">(\d+)<\/span>/g)];
-        let homeScore = sMatches[0] ? parseInt(sMatches[0][1], 10) : null;
-        let awayScore = sMatches[1] ? parseInt(sMatches[1][1], 10) : null;
-
-        // Timestamp
-        const timeMatch = block.match(/data-timestamp="(\d+)"/);
-        const timestamp = timeMatch ? parseInt(timeMatch[1], 10) * 1000 : null;
-        const matchDate = timestamp ? new Date(timestamp) : new Date();
-
-        // Exact Live / Finished determination
-        let isLive = false;
-        let isFinished = false;
-
-        if (homeScore !== null && awayScore !== null) {
-          if (homeScore >= winThreshold || awayScore >= winThreshold) {
-            isFinished = true;
-          } else if (timestamp && now >= timestamp && now <= timestamp + (boNum * 45 * 60 * 1000)) {
-            isLive = true;
-          } else {
-            isLive = true;
-          }
-        } else if (timestamp) {
-          if (now >= timestamp && now <= timestamp + (boNum * 45 * 60 * 1000)) {
-            isLive = true;
-            homeScore = 0;
-            awayScore = 0;
-          } else if (now > timestamp + (boNum * 45 * 60 * 1000)) {
-            isFinished = true;
-            homeScore = 2;
-            awayScore = 0;
-          }
-        }
-
-        // Live Real-Time Bracket Score Update (Pulls latest 2/0, 2/1, 2/2 directly from bracket)
-        if (tournamentHref && isLive) {
-          const liveBracket = await getLiveBracketScore(tournamentHref, homeTeam, awayTeam);
-          if (liveBracket && liveBracket.homeScore !== null && liveBracket.awayScore !== null) {
-            homeScore = liveBracket.homeScore;
-            awayScore = liveBracket.awayScore;
-            if (homeScore >= winThreshold || awayScore >= winThreshold) {
-              isFinished = true;
-              isLive = false;
-            } else {
-              isLive = true;
-            }
-          }
-        }
-
-        // Real Official Streams from Liquipedia
-        const streamMatches = [...block.matchAll(/href="\/mobilelegends\/Special:Stream\/([^/"]+)\/([^"#]+)"/g)].map(m => ({
-          platform: m[1],
-          channel: m[2].replace(/_/g, ' ')
-        }));
-
-        const streamChannel = streamMatches.find(s => s.platform === 'youtube')?.channel 
-          || streamMatches[0]?.channel 
-          || getOfficialChannel(tournament, homeTeam, awayTeam);
-
-        // Display Time & Day
-        let timeDisplay = '';
-        let day = 'Today';
-        const today = new Date();
-        const isToday = matchDate.getDate() === today.getDate() && matchDate.getMonth() === today.getMonth();
-        const isTomorrow = matchDate.getDate() === today.getDate() + 1 && matchDate.getMonth() === today.getMonth();
-
-        const scoreSlash = (homeScore !== null && awayScore !== null) ? `${homeScore}/${awayScore}` : '0/0';
-
-        if (isLive) {
-          timeDisplay = `LIVE ${scoreSlash} (${bo})`;
-          day = 'Today';
-        } else if (isFinished) {
-          timeDisplay = 'FT';
-          day = isToday ? 'Today' : 'Yesterday';
-        } else {
-          timeDisplay = matchDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          if (isTomorrow) day = 'Tomorrow';
-          else if (!isToday) day = 'Upcoming';
-        }
-
-        const { country, flag } = detectCountryFromLeague(tournament);
-
-        matches.push({
-          id: `mlbb_lq_${i + 1}`,
-          sport: 'mlbb',
-          sportSub: 'esports',
-          sportName: 'Mobile Legends (MLBB)',
-          homeTeam,
-          awayTeam,
-          homeLogo,
-          awayLogo,
-          homeScore,
-          awayScore,
-          scoreSlash,
-          rawLeague: `${tournament} • ${bo}`,
-          league: tournament,
-          country: `${flag} ${country}`,
-          leagueIcon: '🎮',
-          bo,
-          isLive,
-          isFinished,
-          isTop: true,
-          day,
-          time: timeDisplay,
-          timestamp,
-          streamChannel,
-          streamInfo: {
-            channel: streamChannel,
-            query: `${streamChannel} live`,
-            streams: streamMatches
-          },
-          odds: {
-            home: +(1.45 + (i % 7) * 0.12).toFixed(2),
-            draw: 0,
-            away: +(1.95 + (i % 5) * 0.14).toFixed(2)
-          }
-        });
-      }
-    }
-  } catch (err) {
-    console.warn('Liquipedia MLBB notice:', err.message);
-  }
-
-  // 2. Fetch GosuGamers to supplement any additional matches & results
-  try {
-    const [upRes, resRes] = await Promise.all([
-      fetch('https://www.gosugamers.net/mobile-legends/matches', { headers, signal: AbortSignal.timeout(3000) }).catch(() => null),
-      fetch('https://www.gosugamers.net/mobile-legends/matches/results', { headers, signal: AbortSignal.timeout(3000) }).catch(() => null)
-    ]);
-
-    function parseGosu(html, isResults = false) {
-      if (!html) return;
-      const cards = html.split('<a class="MuiButtonBase-root MuiCardActionArea-root').slice(1);
-      for (let i = 0; i < cards.length; i++) {
-        const card = cards[i];
-        const hrefMatch = card.match(/href="([^"]+)"/);
-        if (!hrefMatch) continue;
-
-        const teamArias = [...card.matchAll(/aria-label="([^"]+)"/g)].map(m => m[1]);
-        let homeTeam = teamArias[0];
-        let awayTeam = teamArias[1];
-        if (!homeTeam || !awayTeam) {
-          const slug = hrefMatch[1].split('/matches/')[1]?.replace(/^\d+-/, '');
-          const teams = slug ? slug.split('-vs-') : [];
-          if (teams.length >= 2) {
-            homeTeam = teams[0].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            awayTeam = teams[1].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-          }
-        }
-        if (!homeTeam || !awayTeam || homeTeam === awayTeam) continue;
-
-        const pairKey = `${homeTeam.toLowerCase()}__${awayTeam.toLowerCase()}`;
-        if (seenMatches.has(pairKey)) continue;
-        seenMatches.add(pairKey);
-
-        const tourMatch = card.match(/<span class="MuiTypography-root MuiTypography-p3[^"]*">([^<]+)<\/span>/);
-        const tournament = tourMatch ? tourMatch[1].trim() : 'MLBB Championship';
-
-        const logos = [...card.matchAll(/srcSet="([^"]+)"/g)].map(m => m[1].split(' ')[0]);
-        let homeLogo = logos[0] || '';
-        let awayLogo = logos[1] || '';
-        if (!homeLogo || homeLogo.includes('128x128_23.webp')) {
-          homeLogo = getTeamLogoUrl(homeTeam) || homeLogo;
-        }
-        if (!awayLogo || awayLogo.includes('128x128_23.webp')) {
-          awayLogo = getTeamLogoUrl(awayTeam) || awayLogo;
-        }
-
-        const noSvg = card.replace(/<svg[\s\S]*?<\/svg>/g, '');
-        const scoreMatch = noSvg.match(/>(\d+)<\/span>\s*<span[^>]*>:\s*<\/span>\s*<span[^>]*>(\d+)<\/span>/);
-        let homeScore = scoreMatch ? parseInt(scoreMatch[1], 10) : null;
-        let awayScore = scoreMatch ? parseInt(scoreMatch[2], 10) : null;
-
-        const isFinished = isResults || (homeScore !== null && awayScore !== null);
-        let isLive = false;
-        let timeDisplay = 'Upcoming';
-        let day = isFinished ? 'Today' : 'Today';
-        let winner = undefined;
-        let scoreSlash = undefined;
-
-        if (homeScore !== null && awayScore !== null) {
-          scoreSlash = `${homeScore}/${awayScore}`;
-          if (homeScore > awayScore) winner = homeTeam;
-          else if (awayScore > homeScore) winner = awayTeam;
-          else winner = 'Draw';
-        }
-
-        if (isFinished) {
-          timeDisplay = scoreSlash ? `FT ${scoreSlash}` : 'FT';
-        } else {
-          const timeMatch = card.match(/<p class="MuiTypography-root MuiTypography-body1[^"]*">([\s\S]*?)<\/p>/g);
-          const timeText = timeMatch && timeMatch.length >= 2 ? timeMatch[1].replace(/<[^>]+>/g, '').replace(/<!-- -->/g, '').trim() : '';
-          if (timeText.toLowerCase().includes('live') || /badge-live|status-live/i.test(card)) {
-            isLive = true;
-            timeDisplay = scoreSlash ? `LIVE ${scoreSlash} (Bo3)` : 'LIVE';
-          } else if (timeText) {
-            timeDisplay = timeText;
-            day = timeText.includes('d') ? 'Upcoming' : 'Today';
-          }
-        }
-
-        const streamChannel = getOfficialChannel(tournament, homeTeam, awayTeam);
-        const { country, flag } = detectCountryFromLeague(tournament);
-
-        matches.push({
-          id: `mlbb_gosu_${isResults ? 'res_' : 'live_'}${i + 1}`,
-          sport: 'mlbb',
-          sportSub: 'esports',
-          sportName: 'Mobile Legends (MLBB)',
-          homeTeam,
-          awayTeam,
-          homeLogo,
-          awayLogo,
-          homeScore,
-          awayScore,
-          scoreSlash,
-          winner,
-          rawLeague: tournament,
-          league: tournament,
-          country: `${flag} ${country}`,
-          leagueIcon: '🎮',
-          bo: 'Bo3',
-          isLive,
-          isFinished,
-          isTop: true,
-          day,
-          time: timeDisplay,
-          streamChannel,
-          streamInfo: {
-            channel: streamChannel,
-            query: `${streamChannel} live`
-          },
-          odds: {
-            home: +(1.55 + (i % 6) * 0.12).toFixed(2),
-            draw: 0,
-            away: +(1.85 + (i % 5) * 0.15).toFixed(2)
-          },
-          sourceUrl: 'https://www.gosugamers.net' + hrefMatch[1]
-        });
-      }
-    }
-
-    if (upRes && upRes.ok) parseGosu(await upRes.text(), false);
-    if (resRes && resRes.ok) parseGosu(await resRes.text(), true);
-  } catch (err) {
-    console.warn('GosuGamers MLBB notice:', err.message);
-  }
-
-  // Non-destructive merge: preserve all authentic results & scores
-  const combined = [...AUTHENTIC_MLBB_MATCHES];
-  for (const fresh of matches) {
-    const existingIdx = combined.findIndex(m =>
-      (m.homeTeam.toLowerCase() === fresh.homeTeam.toLowerCase() && m.awayTeam.toLowerCase() === fresh.awayTeam.toLowerCase()) ||
-      (m.homeTeam.toLowerCase() === fresh.awayTeam.toLowerCase() && m.awayTeam.toLowerCase() === fresh.homeTeam.toLowerCase())
-    );
-    if (existingIdx !== -1) {
-      if (fresh.homeScore !== null && fresh.awayScore !== null) {
-        combined[existingIdx].homeScore = fresh.homeScore;
-        combined[existingIdx].awayScore = fresh.awayScore;
-        combined[existingIdx].scoreSlash = `${fresh.homeScore}/${fresh.awayScore}`;
-        if (fresh.isFinished) {
-          combined[existingIdx].isFinished = true;
-          combined[existingIdx].isLive = false;
-          combined[existingIdx].winner = fresh.winner || (fresh.homeScore > fresh.awayScore ? fresh.homeTeam : fresh.awayTeam);
-          combined[existingIdx].time = `FT ${combined[existingIdx].scoreSlash}`;
-        }
-      }
-      if (fresh.isLive) {
-        combined[existingIdx].isLive = true;
-        combined[existingIdx].isFinished = false;
-      }
-    } else {
-      if (!fresh.homeLogo || fresh.homeLogo.includes('128x128_23.webp')) {
-        fresh.homeLogo = getTeamLogoUrl(fresh.homeTeam) || fresh.homeLogo;
-      }
-      if (!fresh.awayLogo || fresh.awayLogo.includes('128x128_23.webp')) {
-        fresh.awayLogo = getTeamLogoUrl(fresh.awayTeam) || fresh.awayLogo;
-      }
-      combined.push(fresh);
-    }
-  }
-  cachedMlbbMatches = combined;
-  lastMlbbFetch = now;
-
-  // Real-time bracket score update for all active live matches (Updates 2/0, 2/1, 2/2 in real time)
-  for (const m of cachedMlbbMatches) {
-    if (m.isLive && m.sourceUrl) {
-      const liveBracket = await getLiveBracketScore(m.sourceUrl, m.homeTeam, m.awayTeam);
-      if (liveBracket && liveBracket.homeScore !== null && liveBracket.awayScore !== null) {
-        m.homeScore = liveBracket.homeScore;
-        m.awayScore = liveBracket.awayScore;
-        m.scoreSlash = `${liveBracket.homeScore}/${liveBracket.awayScore}`;
-        m.time = `LIVE ${m.scoreSlash} (${m.bo || 'Bo5'})`;
-      }
-    }
-  }
-
+  const freshMatches = await mobileLegendsFeed.getMatches();
+  if (freshMatches.length > 0) cachedMlbbMatches = freshMatches;
   return cachedMlbbMatches;
 }
 
 let isFetchingMatches = false;
+let cachedLiveScoreMatches = [];
+let lastLiveScoreFetch = 0;
 
 async function refreshMatchesBackground() {
-  if (isFetchingMatches) return;
+  if (isFetchingMatches) return cachedMatches;
   isFetchingMatches = true;
   try {
+    const now = Date.now();
+    const shouldRefreshLiveScore = cachedLiveScoreMatches.length === 0 || now - lastLiveScoreFetch >= 15000;
+    const liveScorePromise = shouldRefreshLiveScore
+      ? fetchFromLiveScore()
+          .then(matches => {
+            if (matches.length > 0) {
+              cachedLiveScoreMatches = matches;
+              lastLiveScoreFetch = Date.now();
+            }
+            return cachedLiveScoreMatches;
+          })
+          .catch(error => {
+            console.warn('LiveScore refresh notice:', error.message);
+            return cachedLiveScoreMatches;
+          })
+      : Promise.resolve(cachedLiveScoreMatches);
+
     const [liveScoreMatches, mlbbMatches] = await Promise.all([
-      fetchFromLiveScore().catch(() => []),
-      fetchMobileLegendsMatches().catch(() => [])
+      liveScorePromise,
+      fetchMobileLegendsMatches().catch(error => {
+        console.warn('MLBB refresh notice:', error.message);
+        return cachedMlbbMatches;
+      })
     ]);
 
     const combined = [...(liveScoreMatches || []), ...(mlbbMatches || [])];
@@ -1065,27 +351,49 @@ async function refreshMatchesBackground() {
       cachedMatches = combined;
       lastMatchesFetch = Date.now();
     }
+    return cachedMatches;
   } catch (err) {
     console.warn('Background matches refresh notice:', err.message);
+    return cachedMatches;
   } finally {
     isFetchingMatches = false;
   }
 }
 
-// Non-blocking, instant response /api/matches (0ms stall, stale-while-revalidate)
-app.get('/api/matches', async (req, res) => {
+// Serve the latest completed snapshot while a single background refresh keeps it current.
+app.get('/api/matches', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   try {
     const now = Date.now();
-    if (cachedMatches.length === 0) {
-      cachedMatches = [...cachedMlbbMatches];
-      refreshMatchesBackground();
-    } else if (now - lastMatchesFetch > 15000) {
+    const hasLiveMlbb = cachedMatches.some(match => match.sport === 'mlbb' && match.isLive);
+    const refreshAfter = hasLiveMlbb ? 4000 : 15000;
+    if (cachedMatches.length === 0 || now - lastMatchesFetch >= refreshAfter) {
       refreshMatchesBackground();
     }
 
-    res.json({ success: true, count: cachedMatches.length, matches: cachedMatches });
+    const requestedSport = String(req.query.sport || '').toLowerCase();
+    const matches = requestedSport
+      ? cachedMatches.filter(match => match.sport === requestedSport)
+      : cachedMatches;
+
+    const sourceUpdatedAt = Math.max(lastLiveScoreFetch, mobileLegendsFeed.getLastRefresh());
+    res.json({
+      success: true,
+      count: matches.length,
+      matches,
+      updatedAt: sourceUpdatedAt ? new Date(sourceUpdatedAt).toISOString() : null,
+      refreshing: isFetchingMatches
+    });
   } catch (err) {
-    res.json({ success: true, count: cachedMlbbMatches.length, matches: cachedMlbbMatches });
+    res.json({
+      success: true,
+      count: cachedMlbbMatches.length,
+      matches: cachedMlbbMatches,
+      updatedAt: mobileLegendsFeed.getLastRefresh()
+        ? new Date(mobileLegendsFeed.getLastRefresh()).toISOString()
+        : null,
+      refreshing: isFetchingMatches
+    });
   }
 });
 
@@ -1313,12 +621,18 @@ app.get('/api/stream/find', async (req, res) => {
 
     let foundYt = null;
     let foundLabel = '';
-    for (const item of ytQueries) {
-      const resYt = await searchYouTube(item.q, item.live);
-      if (resYt && resYt.videoId) {
-        foundYt = resYt;
-        foundLabel = item.label;
-        break;
+    const exactVideoId = match?.streamInfo?.videoId;
+    if (exactVideoId && /^[a-zA-Z0-9_-]{11}$/.test(exactVideoId)) {
+      foundYt = { videoId: exactVideoId, allIds: [exactVideoId] };
+      foundLabel = `${streamChannel || 'Official MLBB'} Live`;
+    } else {
+      for (const item of ytQueries) {
+        const resYt = await searchYouTube(item.q, item.live);
+        if (resYt && resYt.videoId) {
+          foundYt = resYt;
+          foundLabel = item.label;
+          break;
+        }
       }
     }
 
@@ -1428,12 +742,15 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   }
   console.log(`====================================================`);
 
-  // Pre-cache matches on server boot
+  // Pre-cache matches on server boot, then keep live MLBB scores warm for all clients.
   refreshMatchesBackground().then(() => {
-    console.log(`📡 Pre-cached ${cachedMatches.length} matches from LiveScore`);
+    console.log(`📡 Pre-cached ${cachedMatches.length} matches (${cachedMlbbMatches.length} MLBB)`);
   }).catch(err => {
     console.warn('Initial matches pre-cache notice:', err.message);
   });
+
+  const matchRefreshTimer = setInterval(refreshMatchesBackground, 5000);
+  matchRefreshTimer.unref?.();
 });
 
 // Setup Telegram Bot

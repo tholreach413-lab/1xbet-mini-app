@@ -3,3 +3,6 @@ npm-debug.log
 cloudflared.exe
 .git
 .env.local
+.env
+.env.*
+!.env.example

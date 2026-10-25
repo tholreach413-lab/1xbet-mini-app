@@ -665,6 +665,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .ls-brand-badge {
@@ -707,6 +709,20 @@ body {
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.5px;
+}
+
+.ls-live-freshness {
+  padding-left: 6px;
+  border-left: 1px solid rgba(238, 60, 36, 0.28);
+  color: #22c55e;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.35px;
+  white-space: nowrap;
+}
+
+.ls-live-freshness.is-stale {
+  color: #f59e0b;
 }
 
 .ls-live-dot {

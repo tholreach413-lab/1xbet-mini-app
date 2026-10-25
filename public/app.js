@@ -105,54 +105,151 @@ if (tg?.initDataUnsafe?.user) {
   if (avatarEl) avatarEl.textContent = initials.toUpperCase();
 }
 
-// --- DYNAMIC REAL-TIME MATCHES & ODDS ENGINE (5-SECOND LIVE REFRESH) ---
-let prevLiveScoresMap = new Map();
+// --- DYNAMIC REAL-TIME MATCHES ENGINE (5-SECOND PROVIDER SYNC) ---
+const previousMatchStates = new Map();
+let liveMatchesRequestInFlight = false;
+let liveMatchesRefreshTimer = null;
+
+function updateRealTimeIndicators(matches, updatedAt) {
+  const liveMatches = matches.filter(match => match.isLive);
+  const liveCounter = document.getElementById('liveCounterText');
+  if (liveCounter) liveCounter.textContent = `${liveMatches.length} LIVE NOW`;
+
+  const liveTabPill = document.querySelector('.cat-tab[data-tab="live"] .cat-pill');
+  if (liveTabPill) liveTabPill.textContent = String(liveMatches.length);
+
+  const freshness = document.getElementById('liveDataFreshness');
+  if (freshness) {
+    const updateTime = Date.parse(updatedAt || '');
+    const ageSeconds = Number.isFinite(updateTime) ? Math.max(0, Math.round((Date.now() - updateTime) / 1000)) : 0;
+    freshness.textContent = ageSeconds <= 5 ? 'UPDATED NOW' : `UPDATED ${ageSeconds}s AGO`;
+    freshness.classList.toggle('is-stale', ageSeconds > 15);
+  }
+
+  const ticker = document.getElementById('tickerText');
+  if (ticker && liveMatches.length > 0) {
+    const messages = liveMatches.slice(0, 8).map(match => {
+      const separator = match.sport === 'mlbb' ? '/' : ' - ';
+      const hasScore = match.homeScore !== null && match.homeScore !== undefined
+        && match.awayScore !== null && match.awayScore !== undefined;
+      const score = hasScore ? `${match.homeScore}${separator}${match.awayScore}` : 'LIVE';
+      return `${match.homeTeam} ${score} ${match.awayTeam}`;
+    });
+    const loopMessages = [...messages, ...messages];
+    ticker.replaceChildren(...loopMessages.flatMap((message, index) => {
+      const text = document.createElement('span');
+      text.textContent = message;
+      if (index === loopMessages.length - 1) return [text];
+      const separator = document.createElement('span');
+      separator.textContent = '•';
+      return [text, separator];
+    }));
+  }
+}
+
+function scheduleLiveMatchesRefresh(delay = 5000) {
+  clearTimeout(liveMatchesRefreshTimer);
+  liveMatchesRefreshTimer = setTimeout(loadLiveMatches, delay);
+}
+
+async function fetchMatchesSnapshot() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 7000);
+  try {
+    return await fetch('/api/matches', {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 async function loadLiveMatches() {
+  if (liveMatchesRequestInFlight) return;
+  liveMatchesRequestInFlight = true;
+
   try {
-    const res = await fetch('/api/matches', { signal: AbortSignal.timeout(5000) });
+    const res = await fetchMatchesSnapshot();
+    if (!res.ok) throw new Error(`Live matches returned HTTP ${res.status}`);
+
     const data = await res.json();
-    if (data.matches && data.matches.length > 0) {
-      // Check for live score changes in real time
-      for (const m of data.matches) {
-        if (m.isLive && m.homeScore !== null && m.awayScore !== null) {
-          const scoreStr = m.sport === 'mlbb' ? `${m.homeScore}/${m.awayScore}` : `${m.homeScore}-${m.awayScore}`;
-          const prev = prevLiveScoresMap.get(m.id);
-          if (prev && prev !== scoreStr) {
-            showToast(`🔥 LIVE SCORE UPDATE: ${m.homeTeam} ${scoreStr} ${m.awayTeam}`, "success");
-          }
-          prevLiveScoresMap.set(m.id, scoreStr);
+    if (!data.success || !Array.isArray(data.matches)) {
+      throw new Error('Live matches returned an invalid response');
+    }
+
+    const currentIds = new Set();
+    for (const match of data.matches) {
+      currentIds.add(match.id);
+      const hasScore = match.homeScore !== null && match.homeScore !== undefined
+        && match.awayScore !== null && match.awayScore !== undefined;
+      const score = hasScore
+        ? (match.sport === 'mlbb' ? `${match.homeScore}/${match.awayScore}` : `${match.homeScore}-${match.awayScore}`)
+        : null;
+      const previous = previousMatchStates.get(match.id);
+      const winner = match.winner || (match.isFinished && hasScore && match.homeScore !== match.awayScore
+        ? (match.homeScore > match.awayScore ? match.homeTeam : match.awayTeam)
+        : null);
+
+      if (previous) {
+        if (match.isFinished && !previous.isFinished && winner) {
+          showToast(`🏆 FINAL: ${winner} won ${score ? `(${score})` : ''}`.trim(), 'success');
+          triggerHaptic('success');
+        } else if (match.isLive && score && previous.score && score !== previous.score) {
+          showToast(`🔥 LIVE SCORE: ${match.homeTeam} ${score} ${match.awayTeam}`, 'success');
+          triggerHaptic('medium');
         }
       }
 
-      STATE.matches = data.matches;
-      try { renderMatches(); } catch (e) { console.error("renderMatches notice:", e); }
-      try { renderLiveMatches(); } catch (e) { console.error("renderLiveMatches notice:", e); }
-      try { renderStreamChannelSelector(); } catch (e) { console.error("renderStreamChannelSelector notice:", e); }
+      previousMatchStates.set(match.id, {
+        score,
+        isLive: Boolean(match.isLive),
+        isFinished: Boolean(match.isFinished),
+        winner
+      });
+    }
 
-      // If viewing stream tab, update active stream scorecard
-      if (STATE.currentTab === 'stream' && currentStreamMatchId) {
-        const activeM = data.matches.find(m => m.id === currentStreamMatchId);
-        if (activeM) {
-          const scoreBadge = document.getElementById('streamMatchPill');
-          if (scoreBadge) {
-            const isMlbb = activeM.sport === 'mlbb';
-            const scoreStr = (activeM.homeScore !== null && activeM.homeScore !== undefined) 
-              ? (isMlbb ? (activeM.scoreSlash || `${activeM.homeScore}/${activeM.awayScore}`) : `${activeM.homeScore} - ${activeM.awayScore}`) 
-              : 'VS';
-            const boInfo = activeM.bo ? ` • ${activeM.bo}` : '';
-            scoreBadge.innerHTML = `<span class="pulsing-dot-orange"></span> ${activeM.homeTeam} <strong>${scoreStr}</strong> ${activeM.awayTeam} (${activeM.time || 'LIVE'})${boInfo}`;
-          }
+    for (const id of previousMatchStates.keys()) {
+      if (!currentIds.has(id)) previousMatchStates.delete(id);
+    }
+
+    STATE.matches = data.matches;
+    updateRealTimeIndicators(data.matches, data.updatedAt);
+    try { renderMatches(); } catch (e) { console.error('renderMatches notice:', e); }
+    try { renderLiveMatches(); } catch (e) { console.error('renderLiveMatches notice:', e); }
+    try { renderStreamChannelSelector(); } catch (e) { console.error('renderStreamChannelSelector notice:', e); }
+
+    // Keep the open stream scorecard synchronized with score and winner transitions.
+    if (STATE.currentTab === 'stream' && currentStreamMatchId) {
+      const activeMatch = data.matches.find(match => match.id === currentStreamMatchId);
+      if (activeMatch) {
+        const scoreBadge = document.getElementById('streamMatchPill');
+        if (scoreBadge) {
+          const isMlbb = activeMatch.sport === 'mlbb';
+          const hasScore = activeMatch.homeScore !== null && activeMatch.homeScore !== undefined
+            && activeMatch.awayScore !== null && activeMatch.awayScore !== undefined;
+          const score = hasScore
+            ? (isMlbb ? (activeMatch.scoreSlash || `${activeMatch.homeScore}/${activeMatch.awayScore}`) : `${activeMatch.homeScore} - ${activeMatch.awayScore}`)
+            : 'VS';
+          const status = activeMatch.isFinished ? 'FT' : (activeMatch.isLive ? 'LIVE' : activeMatch.time || 'UPCOMING');
+          const statusIcon = activeMatch.isLive ? '<span class="pulsing-dot-orange"></span>' : (activeMatch.isFinished ? '🏆' : '🕒');
+          scoreBadge.innerHTML = `${statusIcon} ${activeMatch.homeTeam} <strong>${score}</strong> ${activeMatch.awayTeam} (${status})${activeMatch.bo ? ` • ${activeMatch.bo}` : ''}`;
         }
       }
     }
   } catch (err) {
-    console.warn("Notice loading matches:", err.message);
+    console.warn('Notice loading matches:', err.message);
+    const freshness = document.getElementById('liveDataFreshness');
+    if (freshness) {
+      freshness.textContent = 'RECONNECTING';
+      freshness.classList.add('is-stale');
+    }
+  } finally {
+    liveMatchesRequestInFlight = false;
+    scheduleLiveMatchesRefresh(5000);
   }
 }
-
-// Auto-refresh live matches every 5 seconds for real-time live score updates
-setInterval(loadLiveMatches, 5000);
 
 // --- INITIAL RENDER & BOOTSTRAP ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -795,6 +892,7 @@ function generateMatchCardHTML(m) {
   const isFinished = Boolean(m.isFinished || m.time === 'FT' || m.day === 'Yesterday');
   const hScore = m.homeScore !== null && m.homeScore !== undefined ? m.homeScore : null;
   const aScore = m.awayScore !== null && m.awayScore !== undefined ? m.awayScore : null;
+  const hasFinalScore = hScore !== null && aScore !== null;
 
   // Real winner determination: Check m.winner directly OR compute from scores
   const homeWon = isFinished && (
@@ -817,7 +915,9 @@ function generateMatchCardHTML(m) {
         <span class="ls-score-digits" style="font-weight:800;color:#fbbf24;">${liveScoreText}</span>
       </div>`;
   } else if (isFinished) {
-    const ftScoreText = isMlbb ? (m.scoreSlash || `${hScore ?? 0}/${aScore ?? 0}`) : `${hScore ?? 0} - ${aScore ?? 0}`;
+    const ftScoreText = hasFinalScore
+      ? (isMlbb ? (m.scoreSlash || `${hScore}/${aScore}`) : `${hScore} - ${aScore}`)
+      : '—';
     liveScoreTimeHTML = `
       <div class="ls-score-cell finished">
         <span class="ls-match-status ft">FT</span>
@@ -861,8 +961,10 @@ function generateMatchCardHTML(m) {
   // Odds Strip OR Completed Match Result Summary
   let bottomStripHTML = '';
   if (isFinished) {
-    let outcomeText = 'Match Completed (Draw)';
-    const scoreDisplay = isMlbb ? (m.scoreSlash || `${hScore ?? 0}/${aScore ?? 0}`) : `${hScore ?? 0} : ${aScore ?? 0}`;
+    let outcomeText = 'Match Completed';
+    const scoreDisplay = hasFinalScore
+      ? (isMlbb ? (m.scoreSlash || `${hScore}/${aScore}`) : `${hScore} : ${aScore}`)
+      : 'Result pending provider confirmation';
     if (homeWon || (m.winner && m.winner.toLowerCase() === (m.homeTeam || '').toLowerCase())) {
       outcomeText = `🏆 ${m.homeTeam} Won Series (${scoreDisplay})`;
     } else if (awayWon || (m.winner && m.winner.toLowerCase() === (m.awayTeam || '').toLowerCase())) {

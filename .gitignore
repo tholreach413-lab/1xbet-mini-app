@@ -3,3 +3,6 @@ cloudflared.exe
 .DS_Store
 *.log
 scratch/
+.env
+.env.*
+!.env.example
