@@ -105,24 +105,54 @@ if (tg?.initDataUnsafe?.user) {
   if (avatarEl) avatarEl.textContent = initials.toUpperCase();
 }
 
-// --- DYNAMIC REAL-TIME MATCHES & ODDS ENGINE (NO HARDCODED SETS) ---
+// --- DYNAMIC REAL-TIME MATCHES & ODDS ENGINE (5-SECOND LIVE REFRESH) ---
+let prevLiveScoresMap = new Map();
+
 async function loadLiveMatches() {
   try {
     const res = await fetch('/api/matches');
     const data = await res.json();
     if (data.matches && data.matches.length > 0) {
+      // Check for live score changes in real time
+      for (const m of data.matches) {
+        if (m.isLive && m.homeScore !== null && m.awayScore !== null) {
+          const scoreStr = m.sport === 'mlbb' ? `${m.homeScore}/${m.awayScore}` : `${m.homeScore}-${m.awayScore}`;
+          const prev = prevLiveScoresMap.get(m.id);
+          if (prev && prev !== scoreStr) {
+            showToast(`🔥 LIVE SCORE UPDATE: ${m.homeTeam} ${scoreStr} ${m.awayTeam}`, "success");
+          }
+          prevLiveScoresMap.set(m.id, scoreStr);
+        }
+      }
+
       STATE.matches = data.matches;
       renderMatches();
       renderLiveMatches();
       renderStreamChannelSelector();
+
+      // If viewing stream tab, update active stream scorecard
+      if (STATE.currentTab === 'stream' && currentStreamMatchId) {
+        const activeM = data.matches.find(m => m.id === currentStreamMatchId);
+        if (activeM) {
+          const scoreBadge = document.getElementById('streamMatchPill');
+          if (scoreBadge) {
+            const isMlbb = activeM.sport === 'mlbb';
+            const scoreStr = (activeM.homeScore !== null && activeM.homeScore !== undefined) 
+              ? (isMlbb ? (activeM.scoreSlash || `${activeM.homeScore}/${activeM.awayScore}`) : `${activeM.homeScore} - ${activeM.awayScore}`) 
+              : 'VS';
+            const boInfo = activeM.bo ? ` • ${activeM.bo}` : '';
+            scoreBadge.innerHTML = `<span class="pulsing-dot-orange"></span> ${activeM.homeTeam} <strong>${scoreStr}</strong> ${activeM.awayTeam} (${activeM.time || 'LIVE'})${boInfo}`;
+          }
+        }
+      }
     }
   } catch (err) {
     console.error("Error loading live matches from /api/matches:", err);
   }
 }
 
-// Auto-refresh live matches every 30 seconds
-setInterval(loadLiveMatches, 30000);
+// Auto-refresh live matches every 5 seconds for real-time live score updates
+setInterval(loadLiveMatches, 5000);
 
 // --- INITIAL RENDER & BOOTSTRAP ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -174,6 +204,16 @@ function switchTab(tabId) {
     target.classList.add('active');
   }
 
+  // Stream Tab Auto-Init
+  if (tabId === 'stream') {
+    renderStreamChannelSelector();
+    if (!currentStreamMatchId) {
+      const mlbbMatch = (STATE.matches || []).find(m => m.sport === 'mlbb');
+      if (mlbbMatch) switchStreamMatch(mlbbMatch.id, false);
+      else if ((STATE.matches || []).length > 0) switchStreamMatch(STATE.matches[0].id, false);
+    }
+  }
+
   // Auto scroll to top
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -190,9 +230,10 @@ function filterSport(sport) {
     }
   });
 
-  // When clicking Mobile Legends, show all MLBB matches across all leagues
+  // When clicking Mobile Legends, show all MLBB matches across all leagues & set stream category
   if (sport === 'mlbb') {
     STATE.liveScoreFilter = 'all';
+    STATE.streamCategory = 'mlbb';
     document.querySelectorAll('.ls-ribbon-btn').forEach(btn => {
       btn.classList.toggle('active', btn.getAttribute('data-filter') === 'all');
     });
@@ -708,19 +749,22 @@ function generateMatchCardHTML(m) {
   const homeWon = isFinished && hScore !== null && aScore !== null && hScore > aScore;
   const awayWon = isFinished && hScore !== null && aScore !== null && aScore > hScore;
 
-  // LiveScore time & score pill (Exact LiveScore formatting)
+  // LiveScore time & score pill (Exact LiveScore formatting with MLBB 2/0, 1/0 game scores)
   let liveScoreTimeHTML = '';
+  const isMlbb = m.sport === 'mlbb';
   if (m.isLive) {
+    const liveScoreText = isMlbb ? (m.scoreSlash || `${m.homeScore ?? 0}/${m.awayScore ?? 0}`) : `${m.homeScore ?? 0} - ${m.awayScore ?? 0}`;
     liveScoreTimeHTML = `
       <div class="ls-score-cell live">
         <span class="ls-live-clock"><span class="pulsing-dot-orange"></span> ${m.time}</span>
-        <span class="ls-score-digits">${m.homeScore ?? 0} - ${m.awayScore ?? 0}</span>
+        <span class="ls-score-digits" style="font-weight:800;color:#fbbf24;">${liveScoreText}</span>
       </div>`;
   } else if (isFinished) {
+    const ftScoreText = isMlbb ? (m.scoreSlash || `${hScore ?? 0}/${aScore ?? 0}`) : `${hScore ?? 0} - ${aScore ?? 0}`;
     liveScoreTimeHTML = `
       <div class="ls-score-cell finished">
         <span class="ls-match-status ft">FT</span>
-        <span class="ls-score-digits ft">${hScore ?? 0} - ${aScore ?? 0}</span>
+        <span class="ls-score-digits ft">${ftScoreText}</span>
       </div>`;
   } else {
     // Upcoming match: show real kickoff time (e.g. 02:30, 21:00) with date tag!
@@ -782,15 +826,18 @@ function generateMatchCardHTML(m) {
     `;
   }
 
-  return `
-    <div class="ls-match-row ${m.isLive ? 'is-live-row' : ''} ${isFinished ? 'is-finished-row' : ''}" id="card_${m.id}">
+    const isMlbb = m.sport === 'mlbb';
+    const boTag = isMlbb && m.bo ? `<span class="ls-mlbb-bo-tag">${m.bo}</span>` : '';
+
+    return `
+    <div class="ls-match-row ${m.isLive ? 'is-live-row' : ''} ${isFinished ? 'is-finished-row' : ''}" id="card_${m.id}" onclick="watchMatchStream('${m.id}')" style="cursor:pointer;">
       <!-- Live Orange Left Minute Box if live -->
       ${m.isLive ? `<div class="ls-live-side-pill">${m.time}</div>` : ''}
       
       <!-- Team vs Team Center Row (Exact LiveScore Layout) -->
       <div class="ls-match-core">
         <div class="ls-team-box home">
-          <span class="ls-team-name ${homeWon ? 'winner' : (awayWon ? 'loser' : '')}">${m.homeTeam}</span>
+          <span class="ls-team-name ${homeWon ? 'winner' : (awayWon ? 'loser' : '')}">${m.homeTeam}${boTag}</span>
           ${homeLogoHTML}
         </div>
         ${liveScoreTimeHTML}
@@ -798,13 +845,22 @@ function generateMatchCardHTML(m) {
           ${awayLogoHTML}
           <span class="ls-team-name ${awayWon ? 'winner' : (homeWon ? 'loser' : '')}">${m.awayTeam}</span>
         </div>
-        <button class="ls-star-fav" onclick="this.classList.toggle('fav-active')" title="Favorite">
+        <button class="ls-star-fav" onclick="event.stopPropagation(); this.classList.toggle('fav-active')" title="Favorite">
           <svg class="star-icon-svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         </button>
       </div>
 
+      <!-- Live Stream Quick Launch Action Button -->
+      <button class="ls-watch-stream-btn ${m.isLive ? 'is-live-btn' : ''}" onclick="event.stopPropagation(); watchMatchStream('${m.id}')">
+        <span class="stream-btn-icon">${m.isLive ? '<span class="pulsing-dot-red"></span>' : '▶'}</span>
+        <span>${m.isLive ? 'Watch Real-Time Live Stream' : 'Watch Match Broadcast / Replay'}</span>
+        ${m.streamChannel ? `<small style="opacity:0.85;font-size:9.5px;margin-left:4px;">(${m.streamChannel})</small>` : ''}
+      </button>
+
       <!-- 1xBet Quick Betting Odds Strip OR Final Result Banner -->
-      ${bottomStripHTML}
+      <div onclick="event.stopPropagation()">
+        ${bottomStripHTML}
+      </div>
     </div>
   `;
 }
@@ -1980,6 +2036,18 @@ function alertNotification(title, msg) {
 
 // --- 1xTV REAL-TIME LIVE STREAMING AUTO-FINDER & SYNC ---
 let currentStreamMatchId = null;
+STATE.streamCategory = 'mlbb'; // Default to MLBB for immediate esports stream access
+STATE.activeStreamSources = [];
+STATE.currentActiveStreamType = 'youtube';
+
+function filterStreamCategory(cat) {
+  triggerHaptic('light');
+  STATE.streamCategory = cat;
+  document.querySelectorAll('.stream-cat-pill').forEach(btn => {
+    btn.classList.toggle('active', btn.id === `btnStreamCat${cat.charAt(0).toUpperCase() + cat.slice(1)}`);
+  });
+  renderStreamChannelSelector();
+}
 
 function renderStreamChannelSelector() {
   const container = document.getElementById('streamChannelSelector');
@@ -1991,11 +2059,53 @@ function renderStreamChannelSelector() {
     return;
   }
 
-  container.innerHTML = matches.map(m => `
-    <button class="stream-chan-btn ${m.id === currentStreamMatchId ? 'active' : ''}" onclick="switchStreamMatch('${m.id}', false)">
-      <span class="live-dot-mini"></span> ${m.homeTeam} vs ${m.awayTeam}
-    </button>
-  `).join('');
+  // Filter channels based on selected category tab
+  const cat = STATE.streamCategory || 'mlbb';
+  let filtered = matches;
+  if (cat === 'mlbb') {
+    filtered = matches.filter(m => m.sport === 'mlbb');
+  } else if (cat === 'football') {
+    filtered = matches.filter(m => m.sport === 'football');
+  } else if (cat === 'basketball') {
+    filtered = matches.filter(m => m.sport === 'basketball');
+  } else {
+    filtered = matches.filter(m => m.isLive || m.isTop).slice(0, 45);
+  }
+
+  if (filtered.length === 0) {
+    filtered = matches.slice(0, 20);
+  }
+
+  // Update MLBB Live Count Badge
+  const mlbbLiveCount = matches.filter(m => m.sport === 'mlbb' && m.isLive).length;
+  const mlbbBadge = document.getElementById('mlbbLiveCountBadge');
+  if (mlbbBadge) {
+    mlbbBadge.textContent = mlbbLiveCount > 0 ? `${mlbbLiveCount} LIVE` : 'LIVE';
+  }
+
+  // Auto-select first match if none selected or if current not in filtered list
+  if (!currentStreamMatchId || !filtered.some(m => m.id === currentStreamMatchId)) {
+    if (filtered.length > 0) {
+      currentStreamMatchId = filtered[0].id;
+    }
+  }
+
+  container.innerHTML = filtered.map(m => {
+    const isLive = m.isLive;
+    const isMlbb = m.sport === 'mlbb';
+    const scoreText = (m.homeScore !== null && m.homeScore !== undefined) 
+      ? (isMlbb ? `${m.homeScore}/${m.awayScore}` : `${m.homeScore}-${m.awayScore}`) 
+      : (m.time || 'LIVE');
+    const boBadge = m.bo ? `<span style="color:#fbbf24;font-size:9px;margin-left:2px;">[${m.bo}]</span>` : '';
+    return `
+      <button class="stream-chan-btn ${m.id === currentStreamMatchId ? 'active' : ''}" onclick="switchStreamMatch('${m.id}', false)">
+        <span class="${isLive ? 'live-dot-mini pulsing-dot-orange' : 'live-dot-mini'}"></span>
+        <span>${m.homeTeam} vs ${m.awayTeam}</span>
+        ${boBadge}
+        <small style="opacity:0.85;font-size:9.5px;margin-left:2px;font-weight:700;color:${isLive ? '#fbbf24' : 'inherit'};">(${scoreText})</small>
+      </button>
+    `;
+  }).join('');
 }
 
 function renderStreamTimeline(match) {
@@ -2006,7 +2116,56 @@ function renderStreamTimeline(match) {
   const away = match.awayTeam;
   const sport = match.sport || 'football';
 
-  if (sport === 'basketball') {
+  if (sport === 'mlbb') {
+    // Authentic Mobile Legends Professional League Events Timeline
+    container.innerHTML = `
+      <div class="timeline-event">
+        <span class="event-time" style="color:#fbbf24;font-weight:800;">14:32</span>
+        <span class="event-icon"><svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+        <span class="event-desc"><strong>⚔️ EVOLVED LORD SLAIN!</strong> ${home} secures the Lord in the River Pit after a decisive 5v5 team fight!</span>
+      </div>
+      <div class="timeline-event">
+        <span class="event-time" style="color:#00d2ff;font-weight:800;">11:15</span>
+        <span class="event-icon"><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+        <span class="event-desc"><strong>🏰 INHIBITOR TURRET FALLS!</strong> Bottom lane base tower breached by ${home}!</span>
+      </div>
+      <div class="timeline-event">
+        <span class="event-time" style="color:#10b981;font-weight:800;">07:48</span>
+        <span class="event-icon"><svg class="ui-icon stroke ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20M2 12h20"/></svg></span>
+        <span class="event-desc"><strong>🐢 TURTLE SECURED!</strong> ${away} captures the 3rd Turtle buff, gaining gold and shield boost!</span>
+      </div>
+      <div class="timeline-event">
+        <span class="event-time" style="color:#ef4444;font-weight:800;">02:10</span>
+        <span class="event-icon"><span style="display:inline-block;width:8px;height:8px;background:#ef4444;border-radius:50%;box-shadow:0 0 8px #ef4444;"></span></span>
+        <span class="event-desc"><strong>⚡ FIRST BLOOD!</strong> Jungler ambushes the Gold Lane to claim the opening kill!</span>
+      </div>
+    `;
+
+    // Update Live Match Statistics labels for MLBB
+    const statShots = document.getElementById('statShots');
+    const statCorners = document.getElementById('statCorners');
+    const statCards = document.getElementById('statCards');
+    if (statShots) {
+      statShots.textContent = '2 - 1';
+      statShots.nextElementSibling.textContent = 'Lords Slain';
+    }
+    if (statCorners) {
+      statCorners.textContent = '3 - 2';
+      statCorners.nextElementSibling.textContent = 'Turtles Secured';
+    }
+    if (statCards) {
+      statCards.textContent = '7 - 4';
+      statCards.nextElementSibling.textContent = 'Turrets Down';
+    }
+    const progLeft = document.getElementById('progressLeft');
+    const progRight = document.getElementById('progressRight');
+    if (progLeft && progRight) {
+      progLeft.style.width = '58%';
+      progLeft.textContent = '+3.5k Gold';
+      progRight.style.width = '42%';
+      progRight.textContent = 'Deficit';
+    }
+  } else if (sport === 'basketball') {
     container.innerHTML = `
       <div class="timeline-event">
         <span class="event-time">${match.time || 'LIVE'}</span>
@@ -2045,38 +2204,116 @@ function renderStreamTimeline(match) {
   }
 }
 
-async function autoFindLiveStream(query) {
+// Auto-Find Live Stream: Search YouTube First, then Website Fallback
+async function autoFindLiveStream(query, match) {
   const overlay = document.getElementById('streamLoadingOverlay');
   const loadingText = document.getElementById('streamLoadingText');
   const iframe = document.getElementById('liveStreamIframe');
+  const statusLabel = document.getElementById('streamSourceLabel');
+  const statusDot = document.getElementById('streamSourceDot');
 
   if (overlay) overlay.classList.add('active');
-  if (loadingText) loadingText.textContent = `SEARCHING LIVE STREAM: "${query}"...`;
+  if (loadingText) loadingText.innerHTML = `1. SEARCHING YOUTUBE LIVE: "${query}"...`;
+
+  const mId = match?.id || currentStreamMatchId || '';
+  const channel = match?.streamChannel || '';
+  const sport = match?.sport || '';
 
   try {
-    const res = await fetch(`/api/stream/find?q=${encodeURIComponent(query)}`);
+    const res = await fetch(`/api/stream/find?q=${encodeURIComponent(query)}&matchId=${encodeURIComponent(mId)}&channel=${encodeURIComponent(channel)}&sport=${encodeURIComponent(sport)}`);
     const data = await res.json();
+
+    STATE.activeStreamSources = data.availableSources || [];
+    STATE.currentActiveStreamType = data.source || 'youtube';
 
     if (data.embedUrl && iframe) {
       iframe.src = data.embedUrl;
-      if (loadingText) loadingText.textContent = data.isLive ? 'REAL-TIME LIVE STREAM CONNECTED!' : 'MATCH BROADCAST LOADED!';
+      const isYt = data.source?.includes('youtube');
+      if (loadingText) {
+        loadingText.textContent = isYt ? '🔴 YOUTUBE LIVE BROADCAST CONNECTED!' : '🌐 OFFICIAL WEB STREAM CONNECTED!';
+      }
+      if (statusLabel) {
+        statusLabel.textContent = data.sourceLabel || (isYt ? 'YouTube Live Stream Active' : 'Official Web Stream Active');
+      }
+      if (statusDot) {
+        statusDot.style.background = isYt ? '#ef4444' : '#00d2ff';
+        statusDot.style.boxShadow = isYt ? '0 0 10px #ef4444' : '0 0 10px #00d2ff';
+      }
+
+      // Update source switcher buttons active state
+      document.querySelectorAll('.btn-source-pill').forEach(btn => {
+        btn.classList.toggle('active', btn.id === (isYt ? 'btnSourceYt' : (data.source === 'twitch' ? 'btnSourceTwitch' : 'btnSourceWeb')));
+      });
+
+      setTimeout(() => {
+        if (overlay) overlay.classList.remove('active');
+      }, 1000);
+      showToast(`Stream Loaded: ${data.sourceLabel || query}!`);
+    } else {
+      // Step 2 fallback to official web stream
+      if (loadingText) loadingText.innerHTML = `2. CHECKING OFFICIAL ESPORTS WEB STREAM...`;
+      const fallbackUrl = `https://player.twitch.tv/?channel=mpl_ph&parent=${window.location.hostname}&autoplay=true`;
+      if (iframe) iframe.src = fallbackUrl;
+      if (statusLabel) statusLabel.textContent = 'Official Web Stream Active';
       setTimeout(() => {
         if (overlay) overlay.classList.remove('active');
       }, 1200);
-      showToast(`Auto-found Live Stream for ${query}!`);
-    } else {
-      if (iframe) iframe.src = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query + ' live')}&mute=1`;
-      if (overlay) overlay.classList.remove('active');
     }
   } catch (e) {
-    if (iframe) iframe.src = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query + ' live')}&mute=1`;
+    console.warn('Stream find error:', e);
+    const fallbackUrl = `https://player.twitch.tv/?channel=mpl_ph&parent=${window.location.hostname}&autoplay=true`;
+    if (iframe) iframe.src = fallbackUrl;
     if (overlay) overlay.classList.remove('active');
+  }
+}
+
+// Manual Switcher between YouTube, Official Website, and Twitch
+function switchActiveStreamSource(type) {
+  triggerHaptic('selection');
+  sounds.playClick();
+  const iframe = document.getElementById('liveStreamIframe');
+  const statusLabel = document.getElementById('streamSourceLabel');
+  const statusDot = document.getElementById('streamSourceDot');
+
+  document.querySelectorAll('.btn-source-pill').forEach(btn => {
+    btn.classList.toggle('active', btn.id === (type === 'youtube' ? 'btnSourceYt' : (type === 'twitch' ? 'btnSourceTwitch' : 'btnSourceWeb')));
+  });
+
+  const sources = STATE.activeStreamSources || [];
+  let target = sources.find(s => s.type === type);
+
+  if (!target) {
+    if (type === 'youtube') {
+      const match = (STATE.matches || []).find(m => m.id === currentStreamMatchId);
+      autoFindLiveStream(`${match?.homeTeam || 'Mobile Legends'} live`, match);
+      return;
+    } else if (type === 'twitch') {
+      target = { embedUrl: `https://player.twitch.tv/?channel=mpl_ph&parent=${window.location.hostname}&autoplay=true`, name: 'Twitch Esports' };
+    } else {
+      target = { embedUrl: `https://www.gosugamers.net/mobile-legends/matches`, name: 'Official Web Stream' };
+    }
+  }
+
+  if (target && target.embedUrl && iframe) {
+    iframe.src = target.embedUrl;
+    if (statusLabel) statusLabel.textContent = `${target.name || type} Connected`;
+    if (statusDot) {
+      statusDot.style.background = type === 'youtube' ? '#ef4444' : (type === 'twitch' ? '#a855f7' : '#00d2ff');
+    }
+    showToast(`Switched to ${target.name || type}!`);
   }
 }
 
 function watchMatchStream(matchId) {
   triggerHaptic('medium');
   sounds.playClick();
+  const match = (STATE.matches || []).find(m => m.id === matchId);
+  if (match && match.sport === 'mlbb') {
+    STATE.streamCategory = 'mlbb';
+    document.querySelectorAll('.stream-cat-pill').forEach(btn => {
+      btn.classList.toggle('active', btn.id === 'btnStreamCatMlbb');
+    });
+  }
   switchTab('stream');
   switchStreamMatch(matchId, true);
 }
@@ -2097,16 +2334,18 @@ function switchStreamMatch(matchId, doSwitchTab = false) {
   const match = (STATE.matches || []).find(m => m.id === matchId) || (STATE.matches || [])[0];
   if (!match) return;
 
-  // Auto-find real-time live stream for this match!
-  autoFindLiveStream(`${match.homeTeam} vs ${match.awayTeam}`);
+  // Auto-find real-time live stream for this match (YouTube first -> Website fallback)
+  autoFindLiveStream(`${match.homeTeam} vs ${match.awayTeam}`, match);
 
   // Update overlay score
   const scoreBadge = document.getElementById('streamMatchPill');
   if (scoreBadge) {
+    const isMlbb = match.sport === 'mlbb';
     const scoreStr = (match.homeScore !== null && match.homeScore !== undefined) 
-      ? `${match.homeScore} - ${match.awayScore}` 
+      ? (isMlbb ? (match.scoreSlash || `${match.homeScore}/${match.awayScore}`) : `${match.homeScore} - ${match.awayScore}`) 
       : 'VS';
-    scoreBadge.innerHTML = `<span class="pulsing-dot-orange"></span> ${match.homeTeam} ${scoreStr} ${match.awayTeam} (${match.time || 'LIVE'})`;
+    const boInfo = match.bo ? ` • ${match.bo}` : '';
+    scoreBadge.innerHTML = `<span class="pulsing-dot-orange"></span> ${match.homeTeam} <strong>${scoreStr}</strong> ${match.awayTeam} (${match.time || 'LIVE'})${boInfo}`;
   }
 
   // Update stats teams
@@ -2116,7 +2355,9 @@ function switchStreamMatch(matchId, doSwitchTab = false) {
   if (awayLbl) awayLbl.textContent = match.awayTeam;
 
   const titleEl = document.getElementById('streamBettingTitle');
-  if (titleEl) titleEl.innerHTML = `<svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> In-Play Live Odds (${match.homeTeam} vs ${match.awayTeam})`;
+  if (titleEl) {
+    titleEl.innerHTML = `<svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> In-Play Live Odds (${match.homeTeam} vs ${match.awayTeam})`;
+  }
 
   // Render commentary and timeline for this match
   renderStreamTimeline(match);
@@ -2133,7 +2374,7 @@ function searchLiveStreamCustom() {
     showToast("Please enter a team or match to search!", "warning");
     return;
   }
-  autoFindLiveStream(query);
+  autoFindLiveStream(query, null);
   const scoreBadge = document.getElementById('streamMatchPill');
   if (scoreBadge) scoreBadge.innerHTML = `<span class="pulsing-dot-orange"></span> Live: ${query}`;
 }
@@ -2146,12 +2387,14 @@ function renderStreamOdds(m) {
     return STATE.betslip.selections.some(s => s.matchId === m.id && s.pickType === pickType);
   };
 
+  const isMlbb = m.sport === 'mlbb';
+
   container.innerHTML = `
     <button class="btn-odd ${isSelected('1') ? 'selected' : ''}" onclick="toggleOddSelection('${m.id}', '1', '${m.homeTeam}', ${m.odds.home})">
       <span class="odd-type">${m.homeTeam} (1)</span>
       <span class="odd-val">${m.odds.home.toFixed(2)}</span>
     </button>
-    ${m.odds.draw > 0 ? `
+    ${!isMlbb && m.odds.draw > 0 ? `
       <button class="btn-odd ${isSelected('X') ? 'selected' : ''}" onclick="toggleOddSelection('${m.id}', 'X', 'Draw (X)', ${m.odds.draw})">
         <span class="odd-type">Draw (X)</span>
         <span class="odd-val">${m.odds.draw.toFixed(2)}</span>

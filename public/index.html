@@ -303,7 +303,27 @@
       <!-- TAB: 1xTV LIVE STREAMING VIDEO -->
       <section class="tab-content" id="tabStream">
         <div class="stream-page-container">
-          <!-- Stream Header -->
+          <!-- Stream Sport Filter Bar (Direct Quick Access to Mobile Legends) -->
+          <div class="stream-category-bar">
+            <button class="stream-cat-pill active" id="btnStreamCatMlbb" onclick="filterStreamCategory('mlbb')">
+              <span class="stream-cat-icon">🎮</span>
+              <span>Mobile Legends MLBB</span>
+              <span class="stream-live-count-badge" id="mlbbLiveCountBadge">LIVE</span>
+            </button>
+            <button class="stream-cat-pill" id="btnStreamCatFootball" onclick="filterStreamCategory('football')">
+              <span class="stream-cat-icon">⚽</span>
+              <span>Football</span>
+            </button>
+            <button class="stream-cat-pill" id="btnStreamCatBasketball" onclick="filterStreamCategory('basketball')">
+              <span class="stream-cat-icon">🏀</span>
+              <span>Basketball</span>
+            </button>
+            <button class="stream-cat-pill" id="btnStreamCatAll" onclick="filterStreamCategory('all')">
+              <span class="stream-cat-icon">🔥</span>
+              <span>All Streams</span>
+            </button>
+          </div>
+
           <!-- Dynamic Channel Selector (Auto-Populated from Real Active Matches) -->
           <div class="stream-channel-selector" id="streamChannelSelector">
             <!-- Dynamically populated from real live matches -->
@@ -311,7 +331,7 @@
 
           <!-- Live Stream Search Bar (Auto-Finds Any Game in Real Time) -->
           <div class="stream-search-bar">
-            <input type="text" id="streamSearchInput" class="stream-search-input" placeholder="Search any team/match live (e.g. Arsenal, Real Madrid, NBA)...">
+            <input type="text" id="streamSearchInput" class="stream-search-input" placeholder="Search any MLBB match or team (e.g. See You Soon, MPL, TNR)...">
             <button class="btn-search-stream" onclick="searchLiveStreamCustom()">
               <span>Auto-Find Live</span>
             </button>
@@ -340,6 +360,25 @@
                 </div>
                 <span class="stream-quality-tag">1080p 60fps</span>
               </div>
+            </div>
+          </div>
+
+          <!-- Real-Time Stream Multi-Source Switcher (YouTube First -> Website Fallback) -->
+          <div class="stream-source-bar" id="streamSourceBar">
+            <div class="stream-source-status">
+              <span class="stream-source-dot" id="streamSourceDot"></span>
+              <span class="stream-source-label" id="streamSourceLabel">YouTube Live Stream Connected</span>
+            </div>
+            <div class="stream-source-buttons" id="streamSourceButtons">
+              <button class="btn-source-pill active" id="btnSourceYt" onclick="switchActiveStreamSource('youtube')">
+                <span style="color:#ef4444;">●</span> YouTube
+              </button>
+              <button class="btn-source-pill" id="btnSourceWeb" onclick="switchActiveStreamSource('website')">
+                <span style="color:#00d2ff;">🌐</span> Web Stream
+              </button>
+              <button class="btn-source-pill" id="btnSourceTwitch" onclick="switchActiveStreamSource('twitch')">
+                <span style="color:#a855f7;">🟣</span> Twitch
+              </button>
             </div>
           </div>
 
