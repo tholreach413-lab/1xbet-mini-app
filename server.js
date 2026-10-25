@@ -421,7 +421,7 @@ async function getLiveBracketScore(tournamentPage, homeTeam, awayTeam) {
   const headers = { 'User-Agent': '1xBetMiniApp/2.0 (contact: admin@1xbet-bot.com)' };
   try {
     const url = `https://liquipedia.net/mobilelegends/api.php?action=parse&page=${encodeURIComponent(pageName)}&prop=text&format=json`;
-    const res = await fetch(url, { headers });
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(3000) });
     if (!res.ok) {
       return cached ? cached.scores : null;
     }
@@ -476,7 +476,8 @@ async function fetchMobileLegendsMatches() {
   // 1. Fetch Liquipedia Matches First (100% authentic tournament names, exact kickoff timestamps, Bo3/Bo5/Bo7, team logos, and official streams)
   try {
     const res = await fetch('https://liquipedia.net/mobilelegends/api.php?action=parse&page=Liquipedia:Matches&prop=text&format=json', {
-      headers: { 'User-Agent': '1xBetMiniApp/2.0 (esports@1xbet.com)' }
+      headers: { 'User-Agent': '1xBetMiniApp/2.0 (contact: admin@1xbet-bot.com)' },
+      signal: AbortSignal.timeout(3500)
     });
     if (res.ok) {
       const data = await res.json();
@@ -661,8 +662,8 @@ async function fetchMobileLegendsMatches() {
   // 2. Fetch GosuGamers to supplement any additional matches & results
   try {
     const [upRes, resRes] = await Promise.all([
-      fetch('https://www.gosugamers.net/mobile-legends/matches', { headers }).catch(() => null),
-      fetch('https://www.gosugamers.net/mobile-legends/matches/results', { headers }).catch(() => null)
+      fetch('https://www.gosugamers.net/mobile-legends/matches', { headers, signal: AbortSignal.timeout(3000) }).catch(() => null),
+      fetch('https://www.gosugamers.net/mobile-legends/matches/results', { headers, signal: AbortSignal.timeout(3000) }).catch(() => null)
     ]);
 
     function parseGosu(html, isResults = false) {
@@ -793,12 +794,11 @@ async function fetchMobileLegendsMatches() {
   return cachedMlbbMatches;
 }
 
-async function fetchRealLiveMatches() {
-  const now = Date.now();
-  if (cachedMatches.length > 0 && (now - lastMatchesFetch < 15000)) {
-    return cachedMatches;
-  }
+let isFetchingMatches = false;
 
+async function refreshMatchesBackground() {
+  if (isFetchingMatches) return;
+  isFetchingMatches = true;
   try {
     const [liveScoreMatches, mlbbMatches] = await Promise.all([
       fetchFromLiveScore().catch(() => []),
@@ -808,22 +808,29 @@ async function fetchRealLiveMatches() {
     const combined = [...(liveScoreMatches || []), ...(mlbbMatches || [])];
     if (combined.length > 0) {
       cachedMatches = combined;
-      lastMatchesFetch = now;
-      return cachedMatches;
+      lastMatchesFetch = Date.now();
     }
   } catch (err) {
-    console.warn('LiveScore & AiScore API fetch failed, falling back:', err.message);
+    console.warn('Background matches refresh notice:', err.message);
+  } finally {
+    isFetchingMatches = false;
   }
-
-  return cachedMatches;
 }
 
+// Non-blocking, instant response /api/matches (0ms stall, stale-while-revalidate)
 app.get('/api/matches', async (req, res) => {
   try {
-    const matches = await fetchRealLiveMatches();
-    res.json({ success: true, count: matches.length, matches });
+    const now = Date.now();
+    if (cachedMatches.length === 0) {
+      cachedMatches = [...cachedMlbbMatches];
+      refreshMatchesBackground();
+    } else if (now - lastMatchesFetch > 15000) {
+      refreshMatchesBackground();
+    }
+
+    res.json({ success: true, count: cachedMatches.length, matches: cachedMatches });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.json({ success: true, count: cachedMlbbMatches.length, matches: cachedMlbbMatches });
   }
 });
 
@@ -1167,8 +1174,8 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`====================================================`);
 
   // Pre-cache matches on server boot
-  fetchRealLiveMatches().then(matches => {
-    console.log(`📡 Pre-cached ${matches.length} matches from LiveScore`);
+  refreshMatchesBackground().then(() => {
+    console.log(`📡 Pre-cached ${cachedMatches.length} matches from LiveScore`);
   }).catch(err => {
     console.warn('Initial matches pre-cache notice:', err.message);
   });

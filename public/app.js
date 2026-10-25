@@ -110,7 +110,7 @@ let prevLiveScoresMap = new Map();
 
 async function loadLiveMatches() {
   try {
-    const res = await fetch('/api/matches');
+    const res = await fetch('/api/matches', { signal: AbortSignal.timeout(5000) });
     const data = await res.json();
     if (data.matches && data.matches.length > 0) {
       // Check for live score changes in real time
@@ -126,9 +126,9 @@ async function loadLiveMatches() {
       }
 
       STATE.matches = data.matches;
-      renderMatches();
-      renderLiveMatches();
-      renderStreamChannelSelector();
+      try { renderMatches(); } catch (e) { console.error("renderMatches notice:", e); }
+      try { renderLiveMatches(); } catch (e) { console.error("renderLiveMatches notice:", e); }
+      try { renderStreamChannelSelector(); } catch (e) { console.error("renderStreamChannelSelector notice:", e); }
 
       // If viewing stream tab, update active stream scorecard
       if (STATE.currentTab === 'stream' && currentStreamMatchId) {
@@ -147,7 +147,7 @@ async function loadLiveMatches() {
       }
     }
   } catch (err) {
-    console.error("Error loading live matches from /api/matches:", err);
+    console.warn("Notice loading matches:", err.message);
   }
 }
 
@@ -807,16 +807,22 @@ function generateMatchCardHTML(m) {
       </div>
     `;
   } else {
+    const oddsHome = (m.odds && typeof m.odds.home === 'number') ? m.odds.home : 1.50;
+    const oddsDraw = (m.odds && typeof m.odds.draw === 'number') ? m.odds.draw : 0;
+    const oddsAway = (m.odds && typeof m.odds.away === 'number') ? m.odds.away : 2.00;
+    const safeHomeName = (m.homeTeam || 'Home').replace(/'/g, "\\'");
+    const safeAwayName = (m.awayTeam || 'Away').replace(/'/g, "\\'");
+
     bottomStripHTML = `
       <div class="ls-odds-strip">
-        <button class="ls-odd-btn ${isSelected('1') ? 'selected' : ''}" id="odd_${m.id}_1" onclick="toggleOddSelection('${m.id}', '1', 'Home (${m.homeTeam.replace(/'/g, "\\'")})', ${m.odds.home})">
+        <button class="ls-odd-btn ${isSelected('1') ? 'selected' : ''}" id="odd_${m.id}_1" onclick="toggleOddSelection('${m.id}', '1', 'Home (${safeHomeName})', ${oddsHome})">
           <span class="lbl">1</span>
-          <span class="val">${m.odds.home.toFixed(2)}</span>
+          <span class="val">${oddsHome.toFixed(2)}</span>
         </button>
-        ${m.odds.draw > 0 ? `
-          <button class="ls-odd-btn ${isSelected('X') ? 'selected' : ''}" id="odd_${m.id}_X" onclick="toggleOddSelection('${m.id}', 'X', 'Draw (X)', ${m.odds.draw})">
+        ${oddsDraw > 0 ? `
+          <button class="ls-odd-btn ${isSelected('X') ? 'selected' : ''}" id="odd_${m.id}_X" onclick="toggleOddSelection('${m.id}', 'X', 'Draw (X)', ${oddsDraw})">
             <span class="lbl">X</span>
-            <span class="val">${m.odds.draw.toFixed(2)}</span>
+            <span class="val">${oddsDraw.toFixed(2)}</span>
           </button>
         ` : `
           <button class="ls-odd-btn disabled" disabled>
@@ -824,9 +830,9 @@ function generateMatchCardHTML(m) {
             <span class="val">-</span>
           </button>
         `}
-        <button class="ls-odd-btn ${isSelected('2') ? 'selected' : ''}" id="odd_${m.id}_2" onclick="toggleOddSelection('${m.id}', '2', 'Away (${m.awayTeam.replace(/'/g, "\\'")})', ${m.odds.away})">
+        <button class="ls-odd-btn ${isSelected('2') ? 'selected' : ''}" id="odd_${m.id}_2" onclick="toggleOddSelection('${m.id}', '2', 'Away (${safeAwayName})', ${oddsAway})">
           <span class="lbl">2</span>
-          <span class="val">${m.odds.away.toFixed(2)}</span>
+          <span class="val">${oddsAway.toFixed(2)}</span>
         </button>
       </div>
     `;
