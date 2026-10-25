@@ -1,5 +1,7 @@
 'use strict';
 
+const { decorate } = require('./odds-engine');
+
 const API_BASE_URL = 'https://prod-public-api.livescore.com/v1/api/app';
 const PROVIDER_TIME_ZONE_HOURS = 7;
 const REQUEST_HEADERS = {
@@ -121,7 +123,7 @@ function parseStages(stages, options = {}) {
           ? (period || 'FT')
           : formatKickoff(event.Esd);
 
-      matches.push({
+      const built = {
         id: `football_ls_${event.Eid}`,
         providerId: String(event.Eid),
         sport: 'football',
@@ -156,7 +158,8 @@ function parseStages(stages, options = {}) {
         sourceUpdatedAt,
         broadcasts: getBroadcasts(event.Media),
         competitionId: stage.CompId ? String(stage.CompId) : undefined
-      });
+      };
+      matches.push(decorate(built));
     }
   }
 

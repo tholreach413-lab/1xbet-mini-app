@@ -48,7 +48,14 @@ const state = {
   viewerStreamRequest: 0,
   viewerVideoId: null,
   viewerReturnFocus: null,
-  viewerCloseTimer: null
+  viewerCloseTimer: null,
+  user: { id: null, balance: null },
+  bets: [],
+  betslip: { selections: [], stake: 10 },
+  betslipOpen: false,
+  betsOpen: false,
+  previousOdds: new Map(),
+  userRequestInFlight: false
 };
 
 function readStoredSport() {
@@ -71,7 +78,8 @@ function storeSport(sport) {
 function icon(name, className = '') {
   const safeName = Object.prototype.hasOwnProperty.call(SPORTS, name) || [
     'pulse', 'search', 'refresh', 'clock', 'calendar', 'trophy',
-    'chevron', 'close', 'signal', 'arrow-up', 'empty', 'play', 'external', 'verified'
+    'chevron', 'close', 'signal', 'arrow-up', 'empty', 'play', 'external', 'verified',
+    'ticket', 'wallet', 'trash', 'plus'
   ].includes(name) ? name : 'pulse';
   return `<svg${className ? ` class="${escapeHtml(className)}"` : ''} aria-hidden="true"><use href="#icon-${safeName}"/></svg>`;
 }
@@ -321,6 +329,7 @@ async function refreshScores(options = {}) {
     const providerAge = Date.now() - Date.parse(state.lastUpdatedAt);
     setConnection(Number.isFinite(providerAge) && providerAge > 30000 ? 'offline' : 'online');
     render();
+    refreshUser();
   } catch (error) {
     if (error.name !== 'AbortError') {
       console.warn('Live score refresh:', error.message);
@@ -463,6 +472,8 @@ function render() {
   renderLiveRail();
   renderFreshness();
   updateOpenMatchViewer();
+  renderBetslip();
+  renderWallet();
 }
 
 function renderSummary() {
@@ -538,6 +549,7 @@ function renderMatches() {
   feed.setAttribute('aria-busy', 'false');
   bindCrestErrors(feed);
   bindMatchRows(feed);
+  snapshotOdds();
 }
 
 function renderLeague(group) {
@@ -594,23 +606,66 @@ function renderMatch(match) {
   const updatedClass = state.updatedMatchIds.has(match.id) ? ' score-updated' : '';
 
   return `
-    <article class="match-row${live ? ' is-live' : ''}${finished ? ' is-finished' : ''}${updatedClass}" data-match-id="${escapeHtml(match.id)}" role="button" tabindex="0" aria-label="Open match view for ${escapeHtml(cleanText(match.homeTeam))} versus ${escapeHtml(cleanText(match.awayTeam))}">
-      <div class="match-time-cell">
-        ${live
-          ? `<span class="status-live"><span class="live-dot"></span>${escapeHtml(status)}</span>`
-          : `<span>${escapeHtml(status)}</span>`}
-        <small>${escapeHtml(timeMeta)}</small>
-        <span class="match-provider">${escapeHtml(cleanText(match.source || 'Verified'))}</span>
-      </div>
-      ${renderTeam(match.homeTeam, match.homeLogo, 'home', homeWinner, awayWinner)}
-      <div class="score-cell">
-        <span class="score-value">${escapeHtml(scoreText(match))}</span>
-        <span class="score-state">${escapeHtml(scoreState)}</span>
-      </div>
-      ${renderTeam(match.awayTeam, match.awayLogo, 'away', awayWinner, homeWinner)}
-      ${renderMatchAction(match)}
-    </article>
+    <div class="match-card${live ? ' is-live-card' : ''}${finished ? ' is-finished-card' : ''}">
+      <article class="match-row${live ? ' is-live' : ''}${finished ? ' is-finished' : ''}${updatedClass}" data-match-id="${escapeHtml(match.id)}" role="button" tabindex="0" aria-label="Open match view for ${escapeHtml(cleanText(match.homeTeam))} versus ${escapeHtml(cleanText(match.awayTeam))}">
+        <div class="match-time-cell">
+          ${live
+            ? `<span class="status-live"><span class="live-dot"></span>${escapeHtml(status)}</span>`
+            : `<span>${escapeHtml(status)}</span>`}
+          <small>${escapeHtml(timeMeta)}</small>
+          <span class="match-provider">${escapeHtml(cleanText(match.source || 'Verified'))}</span>
+        </div>
+        ${renderTeam(match.homeTeam, match.homeLogo, 'home', homeWinner, awayWinner)}
+        <div class="score-cell">
+          <span class="score-value">${escapeHtml(scoreText(match))}</span>
+          <span class="score-state">${escapeHtml(scoreState)}</span>
+        </div>
+        ${renderTeam(match.awayTeam, match.awayLogo, 'away', awayWinner, homeWinner)}
+        ${renderMatchAction(match)}
+      </article>
+      ${renderOddsStrip(match)}
+    </div>
   `;
+}
+
+function renderOddsStrip(match) {
+  if (match.isFinished) return '';
+  if (!match.oddsAvailable || !Array.isArray(match.markets) || match.markets.length === 0) {
+    return match.isLive
+      ? '<div class="odds-strip is-suspended"><span>Odds suspended</span></div>'
+      : '';
+  }
+
+  const previous = state.previousOdds.get(match.id) || {};
+  const buttons = match.markets.map(market => {
+    const selected = isSelected(match.id, market.id);
+    const old = previous[market.id];
+    let move = '';
+    if (Number.isFinite(old)) {
+      if (market.price > old) move = ' odd-up';
+      else if (market.price < old) move = ' odd-down';
+    }
+    const sub = market.id === 'X' ? 'Draw' : market.id === '2' ? 'Away' : 'Home';
+    return `
+      <button class="odd-btn${selected ? ' selected' : ''}${move}" type="button"
+        data-odd-match="${escapeHtml(match.id)}" data-odd-market="${escapeHtml(market.id)}"
+        aria-pressed="${selected}"
+        aria-label="${escapeHtml(cleanText(market.pick))} at ${market.price.toFixed(2)}">
+        <span class="odd-label">${escapeHtml(market.label)}</span>
+        <span class="odd-sub">${escapeHtml(sub)}</span>
+        <span class="odd-price">${market.price.toFixed(2)}</span>
+      </button>`;
+  }).join('');
+
+  return `<div class="odds-strip" data-markets="${match.markets.length}">${buttons}</div>`;
+}
+
+function snapshotOdds() {
+  for (const match of state.matches) {
+    if (match.oddsAvailable && Array.isArray(match.markets)) {
+      state.previousOdds.set(match.id, Object.fromEntries(match.markets.map(market => [market.id, market.price])));
+    }
+  }
 }
 
 function renderTeam(teamName, logoUrl, side, winner, loser) {
@@ -645,6 +700,13 @@ function bindCrestErrors(container) {
 }
 
 function bindMatchRows(container) {
+  container.querySelectorAll('[data-odd-market]').forEach(button => {
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      toggleSelection(button.dataset.oddMatch, button.dataset.oddMarket);
+    });
+  });
+
   container.querySelectorAll('[data-watch-match-id]').forEach(button => {
     button.addEventListener('click', event => {
       event.stopPropagation();
@@ -962,17 +1024,23 @@ function bindEvents() {
     }
   });
 
+  bindBettingEvents();
+
   window.addEventListener('online', () => refreshScores({ forceFull: true }));
   window.addEventListener('offline', () => setConnection('offline'));
 }
 
 function initialize() {
   initializeTelegram();
+  state.user.id = getUserId();
   bindEvents();
   updateNavigation();
   updatePageCopy();
+  renderWallet();
+  renderBetslip();
   renderLoading();
   refreshScores({ forceFull: true });
+  refreshUser();
   setInterval(renderFreshness, 5000);
 }
 
@@ -980,4 +1048,385 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initialize, { once: true });
 } else {
   initialize();
+}
+
+
+/* ==========================================================================
+   BETTING: model odds selections, bet slip, wallet, and bet history.
+   Odds are the platform's own live model prices. Betting uses demo credits.
+   ========================================================================== */
+
+function getUserId() {
+  const telegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+  if (telegramUser?.id) return `tg_${telegramUser.id}`;
+  try {
+    let id = localStorage.getItem('match-center-uid');
+    if (!id) {
+      id = `guest_${Math.random().toString(36).slice(2, 10)}`;
+      localStorage.setItem('match-center-uid', id);
+    }
+    return id;
+  } catch (_) {
+    return 'guest';
+  }
+}
+
+function formatCredits(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '0.00';
+  return number.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function isSelected(matchId, marketId) {
+  return state.betslip.selections.some(selection => selection.matchId === matchId && selection.marketId === marketId);
+}
+
+function buildSelection(match, market) {
+  return {
+    matchId: match.id,
+    marketId: market.id,
+    price: market.price,
+    pick: market.pick,
+    label: market.label,
+    matchLabel: `${cleanText(match.homeTeam)} vs ${cleanText(match.awayTeam)}`,
+    sport: match.sport,
+    invalid: false
+  };
+}
+
+function toggleSelection(matchId, marketId) {
+  const match = state.matches.find(item => item.id === matchId);
+  if (!match || !match.oddsAvailable) return;
+  const market = (match.markets || []).find(item => item.id === marketId);
+  if (!market) return;
+
+  const selections = state.betslip.selections;
+  const index = selections.findIndex(selection => selection.matchId === matchId);
+  if (index >= 0 && selections[index].marketId === marketId) {
+    selections.splice(index, 1);
+  } else if (index >= 0) {
+    selections[index] = buildSelection(match, market);
+    state.betslipOpen = true;
+  } else {
+    if (selections.length >= 12) {
+      showToast('', 'close', 'Bet slip full', 'Maximum 12 selections per bet');
+      return;
+    }
+    selections.push(buildSelection(match, market));
+    state.betslipOpen = true;
+  }
+
+  triggerHaptic('selection');
+  renderBetslip();
+  renderMatches();
+}
+
+function removeSelection(matchId) {
+  state.betslip.selections = state.betslip.selections.filter(selection => selection.matchId !== matchId);
+  if (state.betslip.selections.length === 0) state.betslipOpen = false;
+  renderBetslip();
+  renderMatches();
+}
+
+function currentStake() {
+  const number = parseFloat(state.betslip.stake);
+  return Number.isFinite(number) && number > 0 ? Math.round(number * 100) / 100 : 0;
+}
+
+function combinedOdds() {
+  const valid = state.betslip.selections.filter(selection => !selection.invalid);
+  if (valid.length === 0) return 0;
+  return Math.round(valid.reduce((acc, selection) => acc * Number(selection.price || 1), 1) * 100) / 100;
+}
+
+function renderWallet() {
+  const balance = state.user.balance;
+  setText('walletBalance', balance == null ? '—' : formatCredits(balance));
+  setText('betsDrawerBalance', balance == null ? '—' : formatCredits(balance));
+}
+
+function updateBetslipSummary() {
+  const odds = combinedOdds();
+  const stake = currentStake();
+  setText('betslipOdds', odds ? odds.toFixed(2) : '1.00');
+  setText('betslipReturn', formatCredits(stake * odds));
+  const placeButton = document.getElementById('placeBet');
+  if (placeButton) {
+    const valid = state.betslip.selections.filter(selection => !selection.invalid);
+    const affordable = state.user.balance == null || stake <= state.user.balance;
+    placeButton.disabled = !(valid.length > 0 && stake >= 0.5 && affordable);
+  }
+}
+
+function renderBetslip() {
+  const selections = state.betslip.selections;
+
+  for (const selection of selections) {
+    const match = state.matches.find(item => item.id === selection.matchId);
+    if (!match) { selection.invalid = false; continue; }
+    if (match.isFinished || !match.oddsAvailable) { selection.invalid = true; continue; }
+    const market = (match.markets || []).find(item => item.id === selection.marketId);
+    if (market) { selection.price = market.price; selection.invalid = false; }
+    else selection.invalid = true;
+  }
+
+  const count = selections.length;
+  const hasItems = count > 0;
+  const open = hasItems && state.betslipOpen;
+
+  const fab = document.getElementById('betslipFab');
+  if (fab) fab.hidden = !hasItems || state.betslipOpen;
+  setText('fabCount', count);
+  setText('betslipCount', count);
+
+  const panel = document.getElementById('betslip');
+  if (panel) {
+    panel.hidden = !open;
+    panel.classList.toggle('open', open);
+  }
+  document.body.classList.toggle('betslip-open', open);
+
+  const list = document.getElementById('betslipList');
+  if (list) {
+    if (!hasItems) {
+      list.innerHTML = '<div class="betslip-empty">Tap any odds on a match to add it here.</div>';
+    } else {
+      list.innerHTML = selections.map(selection => `
+        <div class="slip-item${selection.invalid ? ' invalid' : ''}">
+          <div class="slip-item-main">
+            <span class="slip-pick">${escapeHtml(cleanText(selection.pick))}</span>
+            <span class="slip-match">${escapeHtml(cleanText(selection.matchLabel))}</span>
+            ${selection.invalid ? '<span class="slip-flag">No longer available — remove</span>' : ''}
+          </div>
+          <span class="slip-price">${Number(selection.price).toFixed(2)}</span>
+          <button class="slip-remove" type="button" data-remove-match="${escapeHtml(selection.matchId)}" aria-label="Remove selection"><svg><use href="#icon-close"/></svg></button>
+        </div>
+      `).join('');
+      list.querySelectorAll('[data-remove-match]').forEach(button => {
+        button.addEventListener('click', () => removeSelection(button.dataset.removeMatch));
+      });
+    }
+  }
+
+  const stakeInput = document.getElementById('stakeInput');
+  if (stakeInput && document.activeElement !== stakeInput) {
+    stakeInput.value = String(state.betslip.stake);
+  }
+
+  const odds = combinedOdds();
+  const stake = currentStake();
+  setText('betslipOdds', hasItems ? odds.toFixed(2) : '1.00');
+  setText('betslipReturn', formatCredits(hasItems ? stake * odds : 0));
+
+  const placeButton = document.getElementById('placeBet');
+  if (placeButton && !placeButton.classList.contains('loading')) {
+    const valid = selections.filter(selection => !selection.invalid);
+    const affordable = state.user.balance == null || stake <= state.user.balance;
+    const ready = valid.length > 0 && stake >= 0.5 && affordable;
+    placeButton.disabled = !ready;
+    placeButton.textContent = !affordable && stake > 0
+      ? 'Insufficient balance'
+      : `Place ${valid.length > 1 ? 'accumulator' : 'bet'}`;
+  }
+}
+
+function openBetslip() {
+  if (state.betslip.selections.length === 0) return;
+  state.betslipOpen = true;
+  renderBetslip();
+}
+
+function closeBetslip() {
+  state.betslipOpen = false;
+  renderBetslip();
+}
+
+function openBetsDrawer() {
+  state.betsOpen = true;
+  const drawer = document.getElementById('betsDrawer');
+  if (drawer) {
+    drawer.hidden = false;
+    requestAnimationFrame(() => drawer.classList.add('open'));
+  }
+  document.body.classList.add('drawer-open');
+  renderBetsDrawer();
+  refreshUser();
+}
+
+function closeBetsDrawer() {
+  state.betsOpen = false;
+  const drawer = document.getElementById('betsDrawer');
+  if (drawer) {
+    drawer.classList.remove('open');
+    setTimeout(() => { if (!state.betsOpen) drawer.hidden = true; }, 220);
+  }
+  document.body.classList.remove('drawer-open');
+}
+
+function renderBetsDrawer() {
+  const list = document.getElementById('betsList');
+  if (!list) return;
+  const bets = state.bets || [];
+  if (bets.length === 0) {
+    list.innerHTML = '<div class="bets-empty">No bets yet. Tap the odds on any match to place your first bet.</div>';
+    return;
+  }
+
+  list.innerHTML = bets.map(bet => {
+    const statusClass = bet.status === 'won' ? 'won' : bet.status === 'lost' ? 'lost' : 'open';
+    const statusLabel = bet.status === 'won' ? 'Won' : bet.status === 'lost' ? 'Lost' : 'Open';
+    const selections = (bet.selections || []).map(selection => `
+      <div class="bet-sel ${selection.status || 'open'}">
+        <span class="bet-sel-pick">${escapeHtml(cleanText(selection.pick))}</span>
+        <small>${escapeHtml(cleanText(selection.matchLabel))}</small>
+        <b>${Number(selection.price).toFixed(2)}</b>
+      </div>`).join('');
+    return `
+      <article class="bet-card ${statusClass}">
+        <header>
+          <span class="bet-type">${escapeHtml(bet.type || 'Bet')}</span>
+          <span class="bet-status ${statusClass}">${statusLabel}</span>
+        </header>
+        <div class="bet-sels">${selections}</div>
+        <footer>
+          <span>Stake<strong>${formatCredits(bet.stake)}</strong></span>
+          <span>Odds<strong>${Number(bet.combinedOdds).toFixed(2)}</strong></span>
+          <span>${bet.status === 'won' ? 'Returned' : 'To return'}<strong>${formatCredits(bet.potentialWin)}</strong></span>
+        </footer>
+      </article>`;
+  }).join('');
+}
+
+function announceSettlements(previousBets, nextBets) {
+  if (!Array.isArray(previousBets) || previousBets.length === 0) return;
+  const previousStatus = new Map(previousBets.map(bet => [bet.id, bet.status]));
+  for (const bet of nextBets) {
+    const was = previousStatus.get(bet.id);
+    if (was === 'open' && bet.status === 'won') {
+      showToast('winner', 'trophy', 'Bet won', `You won ${formatCredits(bet.potentialWin)} credits`);
+      triggerHaptic('success');
+    } else if (was === 'open' && bet.status === 'lost') {
+      showToast('', 'close', 'Bet settled', `${bet.type || 'Your bet'} did not win`);
+    }
+  }
+}
+
+async function refreshUser() {
+  if (state.userRequestInFlight) return;
+  state.userRequestInFlight = true;
+  const id = state.user.id || getUserId();
+  state.user.id = id;
+  try {
+    const response = await fetch(`/api/user/${encodeURIComponent(id)}`, {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' }
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    const previousBets = state.bets;
+    state.user.balance = Number(data.balance);
+    state.bets = Array.isArray(data.bets) ? data.bets : [];
+    announceSettlements(previousBets, state.bets);
+    renderWallet();
+    if (state.betsOpen) renderBetsDrawer();
+  } catch (_) {
+    // Balance refresh is best-effort; the next poll retries.
+  } finally {
+    state.userRequestInFlight = false;
+  }
+}
+
+async function placeBet() {
+  const valid = state.betslip.selections.filter(selection => !selection.invalid);
+  if (valid.length === 0) {
+    showToast('', 'close', 'Bet slip empty', 'Add at least one available selection');
+    return;
+  }
+  const stake = currentStake();
+  if (stake < 0.5) {
+    showToast('', 'close', 'Enter a stake', 'Minimum stake is 0.50 credits');
+    return;
+  }
+  if (state.user.balance != null && stake > state.user.balance) {
+    showToast('', 'close', 'Insufficient balance', 'Lower your stake to continue');
+    return;
+  }
+
+  const button = document.getElementById('placeBet');
+  if (button) { button.disabled = true; button.classList.add('loading'); }
+  try {
+    const response = await fetch('/api/bet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        userId: state.user.id || getUserId(),
+        stake,
+        selections: valid.map(selection => ({ matchId: selection.matchId, marketId: selection.marketId }))
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) {
+      showToast('', 'close', 'Bet not placed', data.error || 'Please try again');
+      return;
+    }
+    state.user.balance = Number(data.balance);
+    if (data.ticket) state.bets.unshift(data.ticket);
+    state.betslip.selections = [];
+    state.betslipOpen = false;
+    renderWallet();
+    renderMatches();
+    showToast('winner', 'ticket', 'Bet placed', `${data.ticket.type} · ${formatCredits(data.ticket.stake)} CR at ${Number(data.ticket.combinedOdds).toFixed(2)}`);
+    triggerHaptic('success');
+  } catch (_) {
+    showToast('', 'close', 'Bet not placed', 'Network error, please try again');
+  } finally {
+    if (button) button.classList.remove('loading');
+    renderBetslip();
+  }
+}
+
+function bindBettingEvents() {
+  document.getElementById('walletChip')?.addEventListener('click', () => {
+    if (state.betsOpen) closeBetsDrawer();
+    else openBetsDrawer();
+  });
+  document.getElementById('betslipFab')?.addEventListener('click', openBetslip);
+  document.getElementById('betslipClose')?.addEventListener('click', closeBetslip);
+  document.getElementById('betslipClear')?.addEventListener('click', () => {
+    state.betslip.selections = [];
+    state.betslipOpen = false;
+    renderBetslip();
+    renderMatches();
+  });
+  document.getElementById('placeBet')?.addEventListener('click', placeBet);
+  document.getElementById('betsClose')?.addEventListener('click', closeBetsDrawer);
+  document.getElementById('betsBackdrop')?.addEventListener('click', closeBetsDrawer);
+
+  const stakeInput = document.getElementById('stakeInput');
+  stakeInput?.addEventListener('input', () => {
+    const cleaned = stakeInput.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+    if (cleaned !== stakeInput.value) stakeInput.value = cleaned;
+    state.betslip.stake = cleaned;
+    updateBetslipSummary();
+  });
+
+  document.querySelectorAll('[data-stake-add]').forEach(button => {
+    button.addEventListener('click', () => {
+      const add = Number(button.dataset.stakeAdd) || 0;
+      state.betslip.stake = Math.round((currentStake() + add) * 100) / 100;
+      renderBetslip();
+    });
+  });
+  document.querySelector('[data-stake-set="max"]')?.addEventListener('click', () => {
+    if (state.user.balance != null) {
+      state.betslip.stake = Math.floor(state.user.balance * 100) / 100;
+      renderBetslip();
+    }
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    if (state.betsOpen) closeBetsDrawer();
+    else if (state.betslipOpen) closeBetslip();
+  });
 }

@@ -1,5 +1,7 @@
 'use strict';
 
+const { decorate } = require('./odds-engine');
+
 const GOSU_BASE_URL = 'https://www.gosugamers.net';
 const SCHEDULE_PATH = '/mobile-legends/matches';
 const RESULTS_PATH = '/mobile-legends/matches/results';
@@ -338,7 +340,7 @@ function buildMatch(card, detail, now, timeZone) {
   const videoId = getYouTubeVideoId(preferredStream);
   const streamChannel = getOfficialChannel(tournament, homeTeam, awayTeam);
 
-  return {
+  const built = {
     id: `mlbb_gosu_${card.matchId}`,
     providerId: String(card.matchId),
     sport: 'mlbb',
@@ -379,8 +381,11 @@ function buildMatch(card, detail, now, timeZone) {
     source: 'GosuGamers',
     sourceVerified: true,
     sourceUrl: `${GOSU_BASE_URL}${card.href}`,
-    sourceUpdatedAt: new Date(now).toISOString()
+    sourceUpdatedAt: new Date(now).toISOString(),
+    homeRank: Number(home.worldRanking) > 0 ? Number(home.worldRanking) : undefined,
+    awayRank: Number(away.worldRanking) > 0 ? Number(away.worldRanking) : undefined
   };
+  return decorate(built);
 }
 
 async function mapWithConcurrency(items, concurrency, mapper) {

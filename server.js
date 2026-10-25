@@ -5,6 +5,11 @@ const path = require('path');
 const TelegramBot = require('node-telegram-bot-api');
 const { createMobileLegendsFeed } = require('./mlbb-feed');
 const { createFootballFeed } = require('./football-feed');
+const oddsEngine = require('./odds-engine');
+
+const MIN_STAKE = 0.5;
+const MAX_STAKE = 1000;
+const MAX_SELECTIONS = 12;
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -161,6 +166,7 @@ async function refreshMatchesBackground() {
       cachedMatches = combined;
       lastMatchesFetch = Date.now();
     }
+    settleAllBets();
     return cachedMatches;
   } catch (err) {
     console.warn('Background matches refresh notice:', err.message);
@@ -249,29 +255,114 @@ app.get('/api/user/:id', (req, res) => {
   res.json(user);
 });
 
+// Place a bet on the virtual/demo balance. Odds are locked server-side from the
+// current model price; client-supplied prices are never trusted. There is no
+// real-money payout path — winnings are demo credits only.
 app.post('/api/bet', (req, res) => {
-  const { userId, stake, odds, match, pick, isCombo } = req.body;
+  const { userId, selections, stake } = req.body || {};
   const user = getUser(userId || 'default');
+  const numericStake = Math.round((parseFloat(stake) || 0) * 100) / 100;
 
-  if (user.balance < stake) {
-    return res.status(400).json({ error: 'Insufficient balance' });
+  if (!Array.isArray(selections) || selections.length === 0) {
+    return res.status(400).json({ success: false, error: 'Your bet slip is empty' });
+  }
+  if (selections.length > MAX_SELECTIONS) {
+    return res.status(400).json({ success: false, error: `Maximum ${MAX_SELECTIONS} selections per bet` });
+  }
+  if (!(numericStake >= MIN_STAKE) || numericStake > MAX_STAKE) {
+    return res.status(400).json({ success: false, error: `Stake must be between ${MIN_STAKE} and ${MAX_STAKE} credits` });
+  }
+  if (numericStake > user.balance) {
+    return res.status(400).json({ success: false, error: 'Insufficient balance' });
   }
 
-  user.balance -= stake;
-  const betTicket = {
-    id: `1X-${Math.floor(10000 + Math.random() * 90000)}`,
-    date: new Date().toLocaleTimeString(),
-    match,
-    pick,
-    odds,
-    stake,
-    potentialWin: +(stake * odds).toFixed(2),
-    status: 'open'
-  };
-  user.bets.unshift(betTicket);
+  const resolved = [];
+  const seenMatches = new Set();
+  for (const selection of selections) {
+    const matchId = String(selection?.matchId || '');
+    const marketId = String(selection?.marketId || '');
+    const match = cachedMatches.find(item => item.id === matchId);
+    if (!match) {
+      return res.status(409).json({ success: false, error: 'A selected match is no longer available' });
+    }
+    if (match.isFinished) {
+      return res.status(409).json({ success: false, error: `${match.homeTeam} vs ${match.awayTeam} has already finished` });
+    }
+    if (seenMatches.has(matchId)) {
+      return res.status(400).json({ success: false, error: 'Only one selection per match is allowed' });
+    }
+    const market = oddsEngine.findMarket(match, marketId);
+    if (!market || !Number.isFinite(market.price)) {
+      return res.status(409).json({ success: false, error: 'A selected market is no longer offered' });
+    }
+    seenMatches.add(matchId);
+    resolved.push({
+      matchId,
+      marketId,
+      sport: match.sport,
+      price: market.price,
+      pick: market.pick,
+      label: market.label,
+      matchLabel: `${match.homeTeam} vs ${match.awayTeam}`,
+      league: match.league || match.rawLeague || '',
+      status: 'open'
+    });
+  }
 
-  res.json({ success: true, balance: user.balance, ticket: betTicket });
+  const combinedOdds = Math.round(resolved.reduce((acc, item) => acc * item.price, 1) * 100) / 100;
+  const potentialWin = Math.round(numericStake * combinedOdds * 100) / 100;
+
+  user.balance = Math.round((user.balance - numericStake) * 100) / 100;
+  const ticket = {
+    id: `1X-${Date.now().toString(36).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`,
+    placedAt: new Date().toISOString(),
+    type: resolved.length > 1 ? 'Accumulator' : 'Single',
+    stake: numericStake,
+    combinedOdds,
+    potentialWin,
+    status: 'open',
+    selections: resolved
+  };
+  user.bets.unshift(ticket);
+  if (user.bets.length > 100) user.bets.length = 100;
+
+  res.json({ success: true, balance: user.balance, ticket });
 });
+
+// Settle open bets against finished matches still present in the live cache.
+function settleBetsForUser(user) {
+  for (const bet of user.bets) {
+    if (bet.status !== 'open') continue;
+    let anyLost = false;
+    let allSettled = true;
+    for (const selection of bet.selections) {
+      if (selection.status === 'won' || selection.status === 'lost') {
+        if (selection.status === 'lost') anyLost = true;
+        continue;
+      }
+      const match = cachedMatches.find(item => item.id === selection.matchId);
+      const outcome = match ? oddsEngine.settleSelection(match, selection.marketId) : 'pending';
+      if (outcome === 'pending') {
+        allSettled = false;
+        continue;
+      }
+      selection.status = outcome;
+      if (outcome === 'lost') anyLost = true;
+    }
+    if (anyLost) {
+      bet.status = 'lost';
+      bet.settledAt = new Date().toISOString();
+    } else if (allSettled) {
+      bet.status = 'won';
+      bet.settledAt = new Date().toISOString();
+      user.balance = Math.round((user.balance + bet.potentialWin) * 100) / 100;
+    }
+  }
+}
+
+function settleAllBets() {
+  for (const user of userStore.values()) settleBetsForUser(user);
+}
 
 app.post('/api/deposit', (req, res) => {
   const { userId, amount, method } = req.body;
