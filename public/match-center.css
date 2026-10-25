@@ -775,7 +775,7 @@ svg {
   position: relative;
   display: grid;
   min-height: 76px;
-  grid-template-columns: 76px minmax(120px, 1fr) 84px minmax(120px, 1fr) 28px;
+  grid-template-columns: 76px minmax(120px, 1fr) 84px minmax(120px, 1fr) 112px;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
@@ -957,6 +957,54 @@ svg {
   color: var(--live);
 }
 
+.match-action-cell {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.match-video-button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 91, 86, 0.4);
+  border-radius: 9px;
+  background: var(--live-soft);
+  color: #ff8884;
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.match-video-button:hover {
+  border-color: var(--live);
+  background: rgba(255, 91, 86, 0.2);
+  color: #fff;
+}
+
+.match-video-button svg {
+  width: 13px;
+  height: 13px;
+}
+
+.video-unavailable {
+  display: block;
+  max-width: 100px;
+  color: #677489;
+  font-size: 7px;
+  font-weight: 750;
+  line-height: 1.35;
+  text-align: right;
+  text-transform: uppercase;
+}
+
 .match-disclosure {
   display: grid;
   width: 26px;
@@ -1127,6 +1175,27 @@ svg {
   font-size: 12px;
   font-weight: 850;
   font-variant-numeric: tabular-nums;
+}
+
+.rail-video-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 9px;
+  color: #667286;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.rail-video-state.available {
+  color: var(--live);
+}
+
+.rail-video-state svg {
+  width: 11px;
+  height: 11px;
 }
 
 .rail-empty {
@@ -1676,6 +1745,28 @@ svg {
     white-space: nowrap;
   }
 
+  .match-action-cell {
+    grid-column: 1 / -1;
+    justify-content: center;
+    padding-top: 7px;
+    border-top: 1px solid rgba(38, 49, 66, 0.55);
+  }
+
+  .match-action-cell.passive {
+    display: none;
+  }
+
+  .match-video-button {
+    width: 100%;
+    min-height: 36px;
+  }
+
+  .video-unavailable {
+    max-width: none;
+    padding: 2px 0;
+    text-align: center;
+  }
+
   .match-disclosure {
     display: none;
   }
@@ -1773,7 +1864,7 @@ svg {
   }
 
   .match-row {
-    grid-template-columns: 90px minmax(160px, 1fr) 100px minmax(160px, 1fr) 30px;
+    grid-template-columns: 90px minmax(160px, 1fr) 100px minmax(160px, 1fr) 120px;
     padding-inline: 18px;
   }
 

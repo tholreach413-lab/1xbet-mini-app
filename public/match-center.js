@@ -559,6 +559,29 @@ function renderLeague(group) {
   `;
 }
 
+function hasVerifiedLiveVideo(match) {
+  const videoId = String(match.streamInfo?.videoId || '');
+  return match.isLive === true
+    && match.streamInfo?.verified === true
+    && match.streamInfo?.isLive === true
+    && /^[A-Za-z0-9_-]{11}$/.test(videoId);
+}
+
+function renderMatchAction(match) {
+  if (hasVerifiedLiveVideo(match)) {
+    return `
+      <div class="match-action-cell has-video">
+        <button class="match-video-button" type="button" data-watch-match-id="${escapeHtml(match.id)}" aria-label="Watch verified live video for ${escapeHtml(cleanText(match.homeTeam))} versus ${escapeHtml(cleanText(match.awayTeam))}">
+          ${icon('play')}<span>Watch live</span>
+        </button>
+      </div>`;
+  }
+  if (match.isLive) {
+    return `<div class="match-action-cell no-video"><span class="video-unavailable">Live video not found</span></div>`;
+  }
+  return `<div class="match-action-cell passive"><span class="match-disclosure">${icon('chevron')}</span></div>`;
+}
+
 function renderMatch(match) {
   const finished = Boolean(match.isFinished);
   const live = Boolean(match.isLive);
@@ -585,7 +608,7 @@ function renderMatch(match) {
         <span class="score-state">${escapeHtml(scoreState)}</span>
       </div>
       ${renderTeam(match.awayTeam, match.awayLogo, 'away', awayWinner, homeWinner)}
-      <span class="match-disclosure">${icon('chevron')}</span>
+      ${renderMatchAction(match)}
     </article>
   `;
 }
@@ -622,9 +645,19 @@ function bindCrestErrors(container) {
 }
 
 function bindMatchRows(container) {
+  container.querySelectorAll('[data-watch-match-id]').forEach(button => {
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      openMatchViewer(button.dataset.watchMatchId, button);
+    });
+  });
+
   container.querySelectorAll('.match-row[data-match-id]').forEach(row => {
     const open = () => openMatchViewer(row.dataset.matchId, row);
-    row.addEventListener('click', open);
+    row.addEventListener('click', event => {
+      if (event.target.closest('[data-watch-match-id]')) return;
+      open();
+    });
     row.addEventListener('keydown', event => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
@@ -805,6 +838,10 @@ async function loadVerifiedBroadcast(match, requestId) {
     if (tracker) tracker.classList.remove('with-broadcast');
     if (Array.isArray(data.channels) && data.channels.length > 0) {
       setText('viewerTrackerTitle', 'Licensed coverage listed');
+    } else if (match.isLive) {
+      setText('viewerTrackerTitle', 'Live video not found');
+    } else {
+      setText('viewerTrackerTitle', 'Official live video not available');
     }
     setText('viewerTrackerMessage', data.message || document.getElementById('viewerTrackerMessage')?.textContent || 'Verified tracking is active.');
   } catch (_) {
@@ -827,6 +864,7 @@ function renderLiveRail() {
     <button class="rail-match" type="button" data-rail-match-id="${escapeHtml(match.id)}">
       <span class="rail-match-top"><span>${escapeHtml(cleanText(match.league || 'Live match'))}</span><span>${escapeHtml(getStatusLabel(match))}</span></span>
       <span class="rail-match-teams"><span>${escapeHtml(cleanText(match.homeTeam))}<br>${escapeHtml(cleanText(match.awayTeam))}</span><strong class="rail-match-score">${escapeHtml(scoreText(match))}</strong></span>
+      <span class="rail-video-state ${hasVerifiedLiveVideo(match) ? 'available' : ''}">${hasVerifiedLiveVideo(match) ? `${icon('play')} Watch live` : 'Live video not found'}</span>
     </button>
   `).join('');
 
