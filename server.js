@@ -394,187 +394,64 @@ app.post('/api/paylink/confirm-instant', (req, res) => {
   });
 });
 
-// Real-Time Live Video Stream Auto-Finder (YouTube First -> Website Fallback Engine)
-app.get('/api/stream/find', async (req, res) => {
-  const query = req.query.q || '';
-  const matchId = req.query.matchId || '';
-  const channel = req.query.channel || '';
-  const sport = req.query.sport || '';
-  const clientHost = req.headers.host || 'localhost';
-
-  // 1. Check if match is in cache to extract exact metadata
-  let match = null;
-  if (matchId) {
-    match = (cachedMatches || []).find(m => m.id === matchId);
-  }
-  if (!match && query) {
-    const qLower = query.toLowerCase();
-    match = (cachedMatches || []).find(m => 
-      `${m.homeTeam} vs ${m.awayTeam}`.toLowerCase().includes(qLower) ||
-      qLower.includes(m.homeTeam?.toLowerCase() || '---')
-    );
+// Return only provider-verified broadcasts. Never guess or search for unrelated streams.
+app.get('/api/stream/find', (req, res) => {
+  const matchId = String(req.query.matchId || '');
+  const match = cachedMatches.find(item => item.id === matchId);
+  if (!match) {
+    return res.status(404).json({
+      success: false,
+      found: false,
+      source: 'tracker',
+      message: 'Match was not found in the current verified feed.'
+    });
   }
 
-  const home = match?.homeTeam || '';
-  const away = match?.awayTeam || '';
-  const league = match?.league || match?.rawLeague || '';
-  const streamChannel = channel || match?.streamChannel || match?.streamInfo?.channel || '';
-  const isMlbb = sport === 'mlbb' || match?.sport === 'mlbb' || query.toLowerCase().includes('mobile legends') || query.toLowerCase().includes('mpl') || query.toLowerCase().includes('msl');
+  const stream = match.streamInfo || {};
+  const videoId = String(stream.videoId || '');
+  const hasVerifiedBroadcast = match.sport === 'mlbb'
+    && stream.verified === true
+    && stream.isLive === true
+    && /^[A-Za-z0-9_-]{11}$/.test(videoId);
 
-  const headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept-Language': 'en-US,en;q=0.9'
-  };
-
-  async function searchYouTube(q, liveOnly = true) {
-    if (!q) return null;
-    try {
-      const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}${liveOnly ? '&sp=EgJAAQ%253D%253D' : ''}`;
-      const response = await fetch(url, { headers });
-      if (!response.ok) return null;
-      const html = await response.text();
-      const videoMatches = [...html.matchAll(/\/watch\?v=([a-zA-Z0-9_-]{11})/g)];
-      const uniqueIds = [...new Set(videoMatches.map(m => m[1]))];
-      if (uniqueIds.length > 0) {
-        return {
-          videoId: uniqueIds[0],
-          allIds: uniqueIds.slice(0, 4)
-        };
-      }
-    } catch (e) {
-      console.warn('YT query note:', e.message);
-    }
-    return null;
-  }
-
-  try {
-    // --- STEP 1: SEARCH YOUTUBE FIRST ---
-    const ytQueries = [];
-    if (streamChannel) {
-      ytQueries.push({ q: `${streamChannel} live`, live: true, label: `${streamChannel} Official Live` });
-    }
-    if (home && away) {
-      ytQueries.push({ q: `${home} vs ${away} live`, live: true, label: `${home} vs ${away} Live Match` });
-    }
-    if (league) {
-      ytQueries.push({ q: `${league} live stream`, live: true, label: `${league} Live Tournament` });
-    }
-    if (query && !ytQueries.some(item => item.q.toLowerCase().includes(query.toLowerCase()))) {
-      ytQueries.push({ q: `${query} live`, live: true, label: `${query} Live` });
-    }
-    if (isMlbb) {
-      ytQueries.push({ q: `Mobile Legends Bang Bang live match tournament`, live: true, label: `MLBB Championship Live` });
-    }
-
-    let foundYt = null;
-    let foundLabel = '';
-    const exactVideoId = match?.streamInfo?.videoId;
-    if (exactVideoId && /^[a-zA-Z0-9_-]{11}$/.test(exactVideoId)) {
-      foundYt = { videoId: exactVideoId, allIds: [exactVideoId] };
-      foundLabel = `${streamChannel || 'Official MLBB'} Live`;
-    } else {
-      for (const item of ytQueries) {
-        const resYt = await searchYouTube(item.q, item.live);
-        if (resYt && resYt.videoId) {
-          foundYt = resYt;
-          foundLabel = item.label;
-          break;
-        }
-      }
-    }
-
-    // Prepare Website fallback sources (Twitch and Official Web streams)
-    const twitchChannel = streamChannel?.toLowerCase().includes('philippines') ? 'mpl_ph'
-      : streamChannel?.toLowerCase().includes('singapore') ? 'mpl_sg'
-      : streamChannel?.toLowerCase().includes('indonesia') ? 'mpl_id'
-      : isMlbb ? 'mpl_ph'
-      : 'esl_mobile';
-
-    const webSources = [
-      {
-        type: 'twitch',
-        name: `Twitch Esports (${twitchChannel.toUpperCase()})`,
-        embedUrl: `https://player.twitch.tv/?channel=${twitchChannel}&parent=${clientHost.split(':')[0]}&autoplay=true&muted=false`
-      },
-      {
-        type: 'website',
-        name: 'Official Esports Portal',
-        embedUrl: `https://www.gosugamers.net/mobile-legends/matches`
-      }
-    ];
-
-    if (foundYt) {
-      return res.json({
-        success: true,
-        found: true,
-        isLive: true,
-        source: 'youtube',
-        sourceLabel: `YouTube Live (${foundLabel})`,
-        videoId: foundYt.videoId,
-        embedUrl: `https://www.youtube.com/embed/${foundYt.videoId}?autoplay=1&mute=0&playsinline=1&rel=0`,
-        availableSources: [
-          {
-            type: 'youtube',
-            name: `YouTube Official Live`,
-            embedUrl: `https://www.youtube.com/embed/${foundYt.videoId}?autoplay=1&mute=0&playsinline=1&rel=0`,
-            videoId: foundYt.videoId
-          },
-          ...webSources
-        ]
-      });
-    }
-
-    // Check YouTube general broadcast/replay as secondary YouTube try
-    if (home && away) {
-      const replay = await searchYouTube(`${home} vs ${away} Mobile Legends match`, false);
-      if (replay && replay.videoId) {
-        return res.json({
-          success: true,
-          found: true,
-          isLive: false,
-          source: 'youtube_broadcast',
-          sourceLabel: `YouTube Match Broadcast (${home} vs ${away})`,
-          videoId: replay.videoId,
-          embedUrl: `https://www.youtube.com/embed/${replay.videoId}?autoplay=1&mute=0&playsinline=1&rel=0`,
-          availableSources: [
-            {
-              type: 'youtube',
-              name: `YouTube Broadcast Video`,
-              embedUrl: `https://www.youtube.com/embed/${replay.videoId}?autoplay=1&mute=0&playsinline=1&rel=0`,
-              videoId: replay.videoId
-            },
-            ...webSources
-          ]
-        });
-      }
-    }
-
-    // --- STEP 2: NOT FOUND ON YOUTUBE -> GO FIND IN WEBSITE! ---
+  if (hasVerifiedBroadcast) {
     return res.json({
       success: true,
       found: true,
-      isLive: true,
-      source: 'website',
-      sourceLabel: `Official Web Broadcast (${twitchChannel.toUpperCase()})`,
-      embedUrl: webSources[0].embedUrl,
-      platform: 'twitch',
-      availableSources: webSources
-    });
-
-  } catch (err) {
-    const defaultTwitch = isMlbb ? 'mpl_ph' : 'esl_mobile';
-    res.json({
-      success: true,
-      found: true,
-      isLive: true,
-      source: 'website',
-      sourceLabel: 'Official Web Broadcast',
-      embedUrl: `https://player.twitch.tv/?channel=${defaultTwitch}&parent=${clientHost.split(':')[0]}&autoplay=true`,
-      error: err.message
+      verified: true,
+      isLive: Boolean(stream.isLive),
+      isMatchLive: Boolean(match.isLive),
+      source: 'youtube',
+      sourceLabel: match.isLive ? 'Official match broadcast' : 'Official tournament broadcast',
+      videoId,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&playsinline=1&rel=0`,
+      watchUrl: `https://www.youtube.com/watch?v=${videoId}`,
+      sourceUrl: match.sourceUrl || null
     });
   }
-});
 
+  const channels = Array.isArray(match.broadcasts)
+    ? match.broadcasts.filter(channel => channel?.name).slice(0, 8)
+    : [];
+  const channelNames = channels.map(channel => channel.name).join(', ');
+
+  return res.json({
+    success: true,
+    found: false,
+    verified: true,
+    isLive: Boolean(match.isLive),
+    isMatchLive: Boolean(match.isLive),
+    source: 'tracker',
+    sourceLabel: 'Verified live score tracker',
+    sourceUrl: match.sourceUrl || null,
+    channels,
+    message: match.sport === 'football'
+      ? (channels.length > 0
+          ? `Licensed coverage is listed on ${channelNames}. Availability depends on your country and subscription.`
+          : 'No official video feed is supplied for this football match. Live score tracking remains active.')
+      : 'No official live broadcast is currently supplied for this match.'
+  });
+});
 // Fallback: serve the focused Football and Mobile Legends match center.
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'live.html'));

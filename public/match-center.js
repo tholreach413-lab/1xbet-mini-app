@@ -43,7 +43,12 @@ const state = {
   suppressNextAlerts: true,
   needsFinalRefresh: false,
   updatedMatchIds: new Set(),
-  recentUpdates: []
+  recentUpdates: [],
+  selectedMatchId: null,
+  viewerStreamRequest: 0,
+  viewerVideoId: null,
+  viewerReturnFocus: null,
+  viewerCloseTimer: null
 };
 
 function readStoredSport() {
@@ -66,7 +71,7 @@ function storeSport(sport) {
 function icon(name, className = '') {
   const safeName = Object.prototype.hasOwnProperty.call(SPORTS, name) || [
     'pulse', 'search', 'refresh', 'clock', 'calendar', 'trophy',
-    'chevron', 'close', 'signal', 'arrow-up', 'empty'
+    'chevron', 'close', 'signal', 'arrow-up', 'empty', 'play', 'external', 'verified'
   ].includes(name) ? name : 'pulse';
   return `<svg${className ? ` class="${escapeHtml(className)}"` : ''} aria-hidden="true"><use href="#icon-${safeName}"/></svg>`;
 }
@@ -369,6 +374,7 @@ function setConnection(status) {
 
 function switchSport(sport) {
   if (!SPORTS[sport] || sport === state.sport) return;
+  closeMatchViewer();
   state.requestController?.abort();
   clearTimeout(state.refreshTimer);
   state.sport = sport;
@@ -456,6 +462,7 @@ function render() {
   renderMatches();
   renderLiveRail();
   renderFreshness();
+  updateOpenMatchViewer();
 }
 
 function renderSummary() {
@@ -497,12 +504,18 @@ function renderMatches() {
   if (loadMore) loadMore.hidden = visible.length >= filtered.length;
 
   if (visible.length === 0) {
+    const nextMatch = state.matches.find(match => !match.isLive && !match.isFinished);
+    const isEmptyLiveView = state.filter === 'live';
+    const emptyTitle = isEmptyLiveView ? 'No verified live match right now' : 'No matches found';
+    const emptyMessage = isEmptyLiveView && nextMatch
+      ? `Next scheduled fixture: ${cleanText(nextMatch.homeTeam)} vs ${cleanText(nextMatch.awayTeam)} at ${getStatusLabel(nextMatch)}.`
+      : 'Try another status filter or search for a different team or competition.';
     feed.setAttribute('aria-busy', 'false');
     feed.innerHTML = `
       <div class="empty-state">
-        ${icon('empty')}
-        <strong>No matches found</strong>
-        <p>Try another status filter or search for a different team or competition.</p>
+        ${icon(isEmptyLiveView ? 'verified' : 'empty')}
+        <strong>${escapeHtml(emptyTitle)}</strong>
+        <p>${escapeHtml(emptyMessage)}</p>
       </div>
     `;
     return;
@@ -524,6 +537,7 @@ function renderMatches() {
   feed.innerHTML = [...groups.values()].map(group => renderLeague(group)).join('');
   feed.setAttribute('aria-busy', 'false');
   bindCrestErrors(feed);
+  bindMatchRows(feed);
 }
 
 function renderLeague(group) {
@@ -557,12 +571,13 @@ function renderMatch(match) {
   const updatedClass = state.updatedMatchIds.has(match.id) ? ' score-updated' : '';
 
   return `
-    <article class="match-row${live ? ' is-live' : ''}${finished ? ' is-finished' : ''}${updatedClass}" data-match-id="${escapeHtml(match.id)}">
+    <article class="match-row${live ? ' is-live' : ''}${finished ? ' is-finished' : ''}${updatedClass}" data-match-id="${escapeHtml(match.id)}" role="button" tabindex="0" aria-label="Open match view for ${escapeHtml(cleanText(match.homeTeam))} versus ${escapeHtml(cleanText(match.awayTeam))}">
       <div class="match-time-cell">
         ${live
           ? `<span class="status-live"><span class="live-dot"></span>${escapeHtml(status)}</span>`
           : `<span>${escapeHtml(status)}</span>`}
         <small>${escapeHtml(timeMeta)}</small>
+        <span class="match-provider">${escapeHtml(cleanText(match.source || 'Verified'))}</span>
       </div>
       ${renderTeam(match.homeTeam, match.homeLogo, 'home', homeWinner, awayWinner)}
       <div class="score-cell">
@@ -601,9 +616,202 @@ function getStatusLabel(match) {
 }
 
 function bindCrestErrors(container) {
-  container.querySelectorAll('.team-crest img').forEach(image => {
+  container.querySelectorAll('.team-crest img, .viewer-crest img').forEach(image => {
     image.addEventListener('error', () => image.remove(), { once: true });
   });
+}
+
+function bindMatchRows(container) {
+  container.querySelectorAll('.match-row[data-match-id]').forEach(row => {
+    const open = () => openMatchViewer(row.dataset.matchId, row);
+    row.addEventListener('click', open);
+    row.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        open();
+      }
+    });
+  });
+}
+
+function viewerCrest(teamName, logoUrl) {
+  const safeTeam = cleanText(teamName) || 'Team';
+  const fallback = `<span class="crest-fallback" style="--crest-color:${crestColor(safeTeam)}">${escapeHtml(getInitials(safeTeam))}</span>`;
+  const logo = typeof logoUrl === 'string' && (/^\//.test(logoUrl) || /^https:\/\//.test(logoUrl))
+    ? `<img src="${escapeHtml(logoUrl)}" alt="" decoding="async">`
+    : '';
+  return `${fallback}${logo}`;
+}
+
+function safeExternalUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' ? url.href : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function setViewerLink(id, url) {
+  const link = document.getElementById(id);
+  if (!link) return;
+  const safeUrl = safeExternalUrl(url);
+  link.hidden = !safeUrl;
+  if (safeUrl) link.href = safeUrl;
+  else link.removeAttribute('href');
+}
+
+function formatSourceUpdate(match) {
+  const timestamp = Date.parse(match.sourceUpdatedAt || state.lastUpdatedAt || '');
+  if (!Number.isFinite(timestamp)) return 'Live synchronization active';
+  const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
+  return seconds < 6 ? 'Updated just now' : `Updated ${seconds} seconds ago`;
+}
+
+function openMatchViewer(matchId, returnFocus) {
+  const match = state.matches.find(item => item.id === matchId);
+  const viewer = document.getElementById('matchViewer');
+  if (!match || !viewer) return;
+
+  state.selectedMatchId = matchId;
+  state.viewerReturnFocus = returnFocus || document.activeElement;
+  state.viewerVideoId = null;
+  state.viewerStreamRequest += 1;
+  clearTimeout(state.viewerCloseTimer);
+  viewer.hidden = false;
+  document.body.classList.add('viewer-open');
+  renderMatchViewer(match);
+  resetViewerMedia();
+  loadVerifiedBroadcast(match, state.viewerStreamRequest);
+  requestAnimationFrame(() => viewer.classList.add('open'));
+  setTimeout(() => document.getElementById('viewerClose')?.focus(), 80);
+}
+
+function closeMatchViewer() {
+  const viewer = document.getElementById('matchViewer');
+  if (!viewer || viewer.hidden) return;
+  state.viewerStreamRequest += 1;
+  state.selectedMatchId = null;
+  state.viewerVideoId = null;
+  viewer.classList.remove('open');
+  document.body.classList.remove('viewer-open');
+  const video = document.getElementById('viewerVideo');
+  if (video) video.src = '';
+  state.viewerCloseTimer = setTimeout(() => {
+    viewer.hidden = true;
+    state.viewerReturnFocus?.focus?.();
+    state.viewerReturnFocus = null;
+    state.viewerCloseTimer = null;
+  }, 220);
+}
+
+function updateOpenMatchViewer() {
+  if (!state.selectedMatchId) return;
+  const match = state.matches.find(item => item.id === state.selectedMatchId);
+  if (!match) {
+    closeMatchViewer();
+    return;
+  }
+  renderMatchViewer(match);
+  if (!state.viewerVideoId && match.streamInfo?.verified && match.streamInfo?.isLive) {
+    state.viewerStreamRequest += 1;
+    loadVerifiedBroadcast(match, state.viewerStreamRequest);
+  }
+}
+
+function renderMatchViewer(match) {
+  const viewer = document.getElementById('matchViewer');
+  if (!viewer || viewer.hidden) return;
+
+  const sourceName = cleanText(match.source || 'Verified provider');
+  setText('viewerSource', `${sourceName} verified`);
+  setText('viewerTitle', `${cleanText(match.homeTeam)} vs ${cleanText(match.awayTeam)}`);
+  setText('viewerLeague', cleanText(match.league || match.rawLeague || 'Competition'));
+  setText('viewerCountry', cleanText(match.country || 'International'));
+  setText('viewerHomeTeam', cleanText(match.homeTeam));
+  setText('viewerAwayTeam', cleanText(match.awayTeam));
+  setText('viewerScore', scoreText(match));
+  setText('viewerStatus', match.isLive ? getStatusLabel(match) : match.isFinished ? 'Full time' : getStatusLabel(match));
+  setText('viewerUpdated', formatSourceUpdate(match));
+
+  const sportIcon = document.getElementById('viewerSportIcon');
+  if (sportIcon) sportIcon.innerHTML = icon(SPORTS[match.sport]?.icon || 'pulse');
+  const homeCrest = document.getElementById('viewerHomeCrest');
+  const awayCrest = document.getElementById('viewerAwayCrest');
+  if (homeCrest) homeCrest.innerHTML = viewerCrest(match.homeTeam, match.homeLogo);
+  if (awayCrest) awayCrest.innerHTML = viewerCrest(match.awayTeam, match.awayLogo);
+  bindCrestErrors(viewer);
+
+  const homeWon = match.isFinished && normalize(match.winner) === normalize(match.homeTeam);
+  const awayWon = match.isFinished && normalize(match.winner) === normalize(match.awayTeam);
+  const homeWinner = document.getElementById('viewerHomeWinner');
+  const awayWinner = document.getElementById('viewerAwayWinner');
+  if (homeWinner) homeWinner.hidden = !homeWon;
+  if (awayWinner) awayWinner.hidden = !awayWon;
+
+  const status = document.getElementById('viewerStatus');
+  status?.classList.toggle('live', Boolean(match.isLive));
+  status?.classList.toggle('final', Boolean(match.isFinished));
+  const trackerTitle = match.isLive ? 'Live score tracker active' : match.isFinished ? 'Official result confirmed' : 'Scheduled match';
+  const trackerMessage = match.isLive
+    ? `The ${sourceName} score and match status refresh automatically every five seconds.`
+    : match.isFinished
+      ? `${cleanText(match.winner || 'The result')} is confirmed by ${sourceName}.`
+      : `Kickoff is scheduled for ${getStatusLabel(match)}. This view will switch to live automatically when confirmed.`;
+  setText('viewerTrackerTitle', trackerTitle);
+  setText('viewerTrackerMessage', trackerMessage);
+  setText('viewerVerificationText', match.sport === 'football'
+    ? 'Football scores and match minutes come directly from LiveScore. No video stream is guessed.'
+    : 'MLBB scores, winners, schedules, and broadcast IDs come directly from GosuGamers match records.');
+  setViewerLink('viewerSourceLink', match.sourceUrl);
+}
+
+function resetViewerMedia() {
+  const section = document.getElementById('viewerVideoSection');
+  const video = document.getElementById('viewerVideo');
+  const tracker = document.getElementById('viewerTracker');
+  if (section) section.hidden = true;
+  if (video) video.src = '';
+  if (tracker) tracker.classList.remove('with-broadcast');
+  setViewerLink('viewerWatchExternal', null);
+}
+
+async function loadVerifiedBroadcast(match, requestId) {
+  const tracker = document.getElementById('viewerTracker');
+  try {
+    const response = await fetch(`/api/stream/find?matchId=${encodeURIComponent(match.id)}`, {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' }
+    });
+    const data = await response.json();
+    if (requestId !== state.viewerStreamRequest || state.selectedMatchId !== match.id) return;
+
+    if (data.found && data.verified && safeExternalUrl(data.embedUrl)) {
+      const section = document.getElementById('viewerVideoSection');
+      const video = document.getElementById('viewerVideo');
+      state.viewerVideoId = data.videoId;
+      if (video && video.src !== data.embedUrl) video.src = data.embedUrl;
+      if (section) section.hidden = false;
+      if (tracker) tracker.classList.add('with-broadcast');
+      setText('viewerBroadcastLabel', data.sourceLabel || 'Official broadcast');
+      setText('viewerBroadcastNote', data.isMatchLive
+        ? 'This broadcast is linked to the live match record.'
+        : 'The official tournament broadcast is live; this match has not started yet.');
+      setViewerLink('viewerWatchExternal', data.watchUrl);
+      return;
+    }
+
+    state.viewerVideoId = null;
+    if (tracker) tracker.classList.remove('with-broadcast');
+    if (Array.isArray(data.channels) && data.channels.length > 0) {
+      setText('viewerTrackerTitle', 'Licensed coverage listed');
+    }
+    setText('viewerTrackerMessage', data.message || document.getElementById('viewerTrackerMessage')?.textContent || 'Verified tracking is active.');
+  } catch (_) {
+    if (requestId !== state.viewerStreamRequest || state.selectedMatchId !== match.id) return;
+    state.viewerVideoId = null;
+    if (tracker) tracker.classList.remove('with-broadcast');
+  }
 }
 
 function renderLiveRail() {
@@ -623,18 +831,7 @@ function renderLiveRail() {
   `).join('');
 
   container.querySelectorAll('[data-rail-match-id]').forEach(button => {
-    button.addEventListener('click', () => {
-      const id = button.dataset.railMatchId;
-      const target = [...document.querySelectorAll('.match-row')].find(row => row.dataset.matchId === id);
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        target.classList.add('score-updated');
-        setTimeout(() => target.classList.remove('score-updated'), 1400);
-      } else {
-        state.filter = 'live';
-        setFilter('live');
-      }
-    });
+    button.addEventListener('click', () => openMatchViewer(button.dataset.railMatchId, button));
   });
 }
 
@@ -676,6 +873,12 @@ function bindEvents() {
 
   document.querySelectorAll('.filter-tab').forEach(button => {
     button.addEventListener('click', () => setFilter(button.dataset.filter));
+  });
+
+  document.getElementById('viewerClose')?.addEventListener('click', closeMatchViewer);
+  document.getElementById('viewerBackdrop')?.addEventListener('click', closeMatchViewer);
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && state.selectedMatchId) closeMatchViewer();
   });
 
   const search = document.getElementById('matchSearch');

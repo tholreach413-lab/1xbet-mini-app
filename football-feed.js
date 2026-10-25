@@ -71,6 +71,18 @@ function formatKickoff(rawValue) {
   return `${value.slice(8, 10)}:${value.slice(10, 12)}`;
 }
 
+function getBroadcasts(media) {
+  if (!media || typeof media !== 'object') return [];
+  return Object.values(media)
+    .flatMap(items => Array.isArray(items) ? items : [])
+    .filter(item => item?.type === 'TV_CHANNEL' && item.eventId)
+    .map(item => ({
+      name: String(item.eventId),
+      type: 'tv',
+      allowedCountries: Array.isArray(item.allowedCountries) ? item.allowedCountries : []
+    }));
+}
+
 function parseStages(stages, options = {}) {
   const matches = [];
   const bucket = options.bucket || 'today';
@@ -139,7 +151,10 @@ function parseStages(stages, options = {}) {
         kickoffTime: formatKickoff(event.Esd),
         timestamp,
         source: 'LiveScore',
+        sourceVerified: true,
+        sourceUrl: 'https://www.livescore.com/en/football/',
         sourceUpdatedAt,
+        broadcasts: getBroadcasts(event.Media),
         competitionId: stage.CompId ? String(stage.CompId) : undefined
       });
     }

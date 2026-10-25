@@ -8,7 +8,7 @@
   <meta name="referrer" content="no-referrer">
   <title>1X Live Match Center</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="match-center.css?v=4.0">
+  <link rel="stylesheet" href="match-center.css?v=4.1">
 </head>
 <body>
   <svg class="icon-library" aria-hidden="true">
@@ -63,6 +63,17 @@
     </symbol>
     <symbol id="icon-empty" viewBox="0 0 24 24">
       <path d="M5 7.5h14v10H5v-10Zm3-3h8m-8 15h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-play" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/>
+      <path d="m10 8 6 4-6 4V8Z" fill="currentColor"/>
+    </symbol>
+    <symbol id="icon-external" viewBox="0 0 24 24">
+      <path d="M13 5h6v6m0-6-8 8M10 7H6.5A1.5 1.5 0 0 0 5 8.5v9A1.5 1.5 0 0 0 6.5 19h9a1.5 1.5 0 0 0 1.5-1.5V14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-verified" viewBox="0 0 24 24">
+      <path d="M12 3.5 19 6v5.5c0 4.1-2.8 7.4-7 9-4.2-1.6-7-4.9-7-9V6l7-2.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+      <path d="m8.5 12 2.2 2.2 4.8-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
     </symbol>
   </svg>
 
@@ -233,11 +244,81 @@
     </button>
   </nav>
 
+  <div class="match-viewer" id="matchViewer" hidden>
+    <button class="viewer-backdrop" id="viewerBackdrop" type="button" aria-label="Close live match view"></button>
+    <section class="viewer-panel" role="dialog" aria-modal="true" aria-labelledby="viewerTitle">
+      <div class="viewer-handle" aria-hidden="true"></div>
+      <header class="viewer-header">
+        <div class="viewer-heading">
+          <span class="viewer-sport-icon" id="viewerSportIcon"><svg><use href="#icon-football"/></svg></span>
+          <div>
+            <span class="viewer-source"><svg><use href="#icon-verified"/></svg><span id="viewerSource">Verified source</span></span>
+            <h2 id="viewerTitle">Match details</h2>
+          </div>
+        </div>
+        <button class="viewer-close" id="viewerClose" type="button" aria-label="Close live match view"><svg><use href="#icon-close"/></svg></button>
+      </header>
+
+      <div class="viewer-body">
+        <div class="viewer-competition">
+          <strong id="viewerLeague">Competition</strong>
+          <span id="viewerCountry">Region</span>
+        </div>
+
+        <section class="viewer-scoreboard" aria-label="Live score">
+          <div class="viewer-team">
+            <div class="viewer-crest" id="viewerHomeCrest"></div>
+            <strong id="viewerHomeTeam">Home</strong>
+            <span class="viewer-winner" id="viewerHomeWinner" hidden><svg><use href="#icon-trophy"/></svg> Winner</span>
+          </div>
+          <div class="viewer-score-center">
+            <span class="viewer-status" id="viewerStatus">Scheduled</span>
+            <strong id="viewerScore">VS</strong>
+            <span class="viewer-updated"><span class="viewer-sync-dot"></span><span id="viewerUpdated">Waiting for update</span></span>
+          </div>
+          <div class="viewer-team">
+            <div class="viewer-crest" id="viewerAwayCrest"></div>
+            <strong id="viewerAwayTeam">Away</strong>
+            <span class="viewer-winner" id="viewerAwayWinner" hidden><svg><use href="#icon-trophy"/></svg> Winner</span>
+          </div>
+        </section>
+
+        <div class="verified-notice">
+          <svg><use href="#icon-verified"/></svg>
+          <div><strong>Provider-verified data</strong><span id="viewerVerificationText">No generated scores or guessed streams are displayed.</span></div>
+        </div>
+
+        <section class="viewer-video" id="viewerVideoSection" hidden>
+          <div class="video-frame-wrap">
+            <iframe id="viewerVideo" title="Official live broadcast" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+          </div>
+          <div class="video-caption">
+            <span><span class="live-dot"></span><strong id="viewerBroadcastLabel">Official broadcast</strong></span>
+            <small id="viewerBroadcastNote">Broadcast supplied by the event provider.</small>
+          </div>
+        </section>
+
+        <section class="viewer-tracker" id="viewerTracker">
+          <span class="tracker-icon"><svg><use href="#icon-pulse"/></svg></span>
+          <div>
+            <strong id="viewerTrackerTitle">Live score tracker</strong>
+            <p id="viewerTrackerMessage">This panel updates automatically with the verified match feed.</p>
+          </div>
+        </section>
+
+        <div class="viewer-actions">
+          <a class="viewer-action primary" id="viewerWatchExternal" href="#" target="_blank" rel="noopener noreferrer" hidden><svg><use href="#icon-play"/></svg><span>Open official broadcast</span></a>
+          <a class="viewer-action" id="viewerSourceLink" href="#" target="_blank" rel="noopener noreferrer" hidden><svg><use href="#icon-external"/></svg><span>Verify at source</span></a>
+        </div>
+      </div>
+    </section>
+  </div>
+
   <div class="toast-region" id="toastRegion" aria-live="assertive" aria-atomic="true"></div>
 
   <noscript>
     <div class="noscript-message">JavaScript is required to display live scores.</div>
   </noscript>
-  <script src="match-center.js?v=4.0"></script>
+  <script src="match-center.js?v=4.1"></script>
 </body>
 </html>

@@ -337,7 +337,6 @@ function buildMatch(card, detail, now, timeZone) {
   const preferredStream = streams.find(stream => stream?.isLive) || streams[0];
   const videoId = getYouTubeVideoId(preferredStream);
   const streamChannel = getOfficialChannel(tournament, homeTeam, awayTeam);
-  const numericId = Number(card.matchId) || 1;
 
   return {
     id: `mlbb_gosu_${card.matchId}`,
@@ -368,18 +367,17 @@ function buildMatch(card, detail, now, timeZone) {
     streamChannel,
     streamInfo: {
       channel: streamChannel,
-      query: `${homeTeam} vs ${awayTeam} live`,
       videoId: videoId || undefined,
+      platform: videoId ? 'youtube' : undefined,
+      broadcastUrl: videoId ? `https://www.youtube.com/watch?v=${videoId}` : undefined,
       title: preferredStream?.title || undefined,
       isLive: Boolean(preferredStream?.isLive),
-      viewerCount: Number(preferredStream?.viewerCount) || 0
-    },
-    odds: {
-      home: +(1.45 + (numericId % 8) * 0.11).toFixed(2),
-      draw: 0,
-      away: +(1.70 + (numericId % 7) * 0.13).toFixed(2)
+      isEventStream: Boolean(preferredStream?.isEventStream),
+      viewerCount: Number(preferredStream?.viewerCount) || 0,
+      verified: Boolean(videoId)
     },
     source: 'GosuGamers',
+    sourceVerified: true,
     sourceUrl: `${GOSU_BASE_URL}${card.href}`,
     sourceUpdatedAt: new Date(now).toISOString()
   };
